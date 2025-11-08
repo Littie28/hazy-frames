@@ -60,10 +60,24 @@ class Frame:
         name: Human-readable frame identifier
     """
 
+    def __new__(
+        cls,
+        parent: Frame | None = None,
+        name: str | None = None,
+        _allow_orphan: bool = False,
+    ) -> Self | Frame:
+        if parent is None and not _allow_orphan:
+            return cls.global_frame()
+        else:
+            instance = super().__new__(cls)
+            return instance
+
     def __init__(
         self,
         parent: Frame | None = None,
         name: str | None = None,
+        *,
+        _allow_orphan: bool = False,
     ):
         """Initialize a new reference frame.
 
@@ -71,8 +85,11 @@ class Frame:
             parent: Parent frame (None for root frames)
             name: Frame identifier (auto-generated if not provided)
         """
-        self.parent = parent
-        self.name = name or f"Frame-{id(self)}"
+        if hasattr(self, "parent"):
+            return
+
+        self._parent: Frame | None = parent
+        self._name = name or f"Frame-{id(self)}"
 
         self._rotations: list[Rotation] = [Rotation.identity()]
         self._translations: list[NDArray[np.floating]] = [np.zeros(3, dtype=float)]
@@ -82,6 +99,18 @@ class Frame:
         self._cached_transform_global: NDArray[np.floating] | None = None
 
         self._is_frozen = False
+
+    @classmethod
+    def create_orphan(cls, name: str | None = None) -> Frame:
+        return cls(parent=None, name=name, _allow_orphan=True)
+
+    @property
+    def parent(self) -> Frame | None:
+        return self._parent
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def combined_rotation(self) -> Rotation:
@@ -237,7 +266,7 @@ class Frame:
             Global frame instance
         """
         if cls._global_frame is None:
-            cls._global_frame = Frame(parent=None, name="global")
+            cls._global_frame = Frame(parent=None, name="global", _allow_orphan=True)
         return cls._global_frame
 
     @property
