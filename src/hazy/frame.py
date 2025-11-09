@@ -128,6 +128,18 @@ class Frame:
         return self._name
 
     @property
+    def root(self) -> Frame:
+        """Get the root frame of this hierarchy.
+
+        Returns:
+            Root frame (self if no parent, otherwise traverses up to root)
+        """
+        current = self
+        while current.parent is not None:
+            current = current.parent
+        return current
+
+    @property
     def combined_rotation(self) -> Rotation:
         """Combined rotation from all accumulated rotations."""
         return reduce(mul, self._rotations)
@@ -322,9 +334,19 @@ class Frame:
 
         Returns:
             4x4 transformation matrix from self to target
+
+        Raises:
+            RuntimeError: If frames belong to different hierarchies (different roots)
         """
         if self == target:
             return np.eye(4)
+
+        if self.root is not target.root:
+            raise RuntimeError(
+                f"Cannot transform between frames from different hierarchies. "
+                f"Frame '{self.name}' has root '{self.root.name}', "
+                f"but frame '{target.name}' has root '{target.root.name}'."
+            )
 
         return target.transform_from_global @ self.transform_to_global
 
