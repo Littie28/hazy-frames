@@ -21,6 +21,7 @@ Example:
     >>> p_parent = p_local.to_frame(parent)
     >>> print(p_parent)  # Point at (5, 1, 0) in parent frame
 """
+from __future__ import annotations
 
 from hazy.frame import Frame
 from hazy.primitives import Point, Vector
