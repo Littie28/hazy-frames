@@ -16,32 +16,20 @@ from hazy.constants import (
 )
 
 coords = floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False)
-small_coords = floats(min_value=-100, max_value=100, allow_nan=False, allow_infinity=False)
+small_coords = floats(
+    min_value=-100, max_value=100, allow_nan=False, allow_infinity=False
+)
 angles = floats(min_value=-180, max_value=180, allow_nan=False, allow_infinity=False)
 scales = floats(min_value=0.1, max_value=10, allow_nan=False, allow_infinity=False)
 
 
 @pytest.mark.unit
 class TestFrameCreation:
-    def test_creation_without_arguments_returns_global_singleton(self):
-        frame = Frame()
+    def test_return_global_singleton(self):
+        frame = Frame.global_frame()
 
         assert frame.name == "global"
         assert frame.parent is None
-
-    def test_creation_with_parent_none_returns_global_singleton(self):
-        frame = Frame(parent=None)
-
-        assert frame.name == "global"
-        assert frame.parent is None
-
-    def test_creation_with_name_only_raises_value_error(self):
-        with pytest.raises(ValueError, match="Cannot specify name"):
-            Frame(name="some name")
-
-    def test_creation_with_parent_none_and_name_raises_value_error(self):
-        with pytest.raises(ValueError, match="Cannot specify name"):
-            Frame(parent=None, name="some name")
 
     def test_creation_with_parent_and_name(self):
         frame = Frame(parent=Frame.global_frame(), name="some sub-frame")
@@ -57,12 +45,10 @@ class TestFrameCreation:
         assert frame.parent is parent
 
     def test_singleton_behavior(self):
-        frame1 = Frame()
-        frame2 = Frame()
-        frame3 = Frame.global_frame()
+        frame1 = Frame.global_frame()
+        frame2 = Frame.global_frame()
 
         assert frame1 is frame2
-        assert frame2 is frame3
 
     def test_create_orphan(self):
         orphan = Frame.create_orphan(name="orphan")
@@ -97,14 +83,14 @@ class TestFrameInitialState:
         assert frame._is_frozen is False
 
     def test_identity_transform_initialization(self):
-        frame = Frame()
+        frame = Frame(parent=Frame.global_frame())
 
         assert_allclose(frame._rotations[0].as_matrix(), IDENTITY_ROTATION.as_matrix())
         assert_allclose(frame._translations[0], IDENTITY_TRANSLATION)
         assert_allclose(frame._scalings[0], IDENTITY_SCALE)
 
     def test_identity_transform_combination(self):
-        frame = Frame()
+        frame = Frame(parent=Frame.global_frame())
 
         assert_allclose(
             frame.combined_rotation.as_matrix(), IDENTITY_ROTATION.as_matrix()
@@ -126,7 +112,7 @@ class TestFrameInitialState:
 @pytest.mark.unit
 class TestFrameUnitVectors:
     def test_global_frame_unit_vectors(self):
-        frame = Frame()
+        frame = Frame(parent=Frame.global_frame())
 
         assert frame.unit_x == frame.unit_x_global
         assert frame.unit_y == frame.unit_y_global
@@ -402,7 +388,9 @@ class TestBatchTransform:
 
 @pytest.mark.unit
 class TestTransformationInverses:
-    @given(tx=small_coords, ty=small_coords, tz=small_coords, angle=angles, scale=scales)
+    @given(
+        tx=small_coords, ty=small_coords, tz=small_coords, angle=angles, scale=scales
+    )
     def test_transform_to_parent_inverse(self, tx, ty, tz, angle, scale):
         """transform_to_parent @ transform_from_parent = Identity"""
         frame = (
@@ -435,8 +423,10 @@ class TestTransformationInverses:
         """frame1.transform_to(frame2) is inverse of frame2.transform_to(frame1)"""
         global_frame = Frame.global_frame()
         frame1 = Frame(parent=global_frame).translate(x=tx1, y=ty1)
-        frame2 = Frame(parent=global_frame).translate(x=tx2, y=ty2).rotate_euler(
-            z=angle, degrees=True
+        frame2 = (
+            Frame(parent=global_frame)
+            .translate(x=tx2, y=ty2)
+            .rotate_euler(z=angle, degrees=True)
         )
 
         t_1to2 = frame1.transform_to(frame2)
@@ -465,9 +455,13 @@ class TestTranslationProperties:
         frame = Frame(parent=Frame.global_frame()).translate(x=tx, y=ty, z=tz)
 
         assert_allclose(
-            frame.combined_rotation.as_matrix(), IDENTITY_ROTATION.as_matrix(), atol=1e-10
+            frame.combined_rotation.as_matrix(),
+            IDENTITY_ROTATION.as_matrix(),
+            atol=1e-10,
         )
-        assert_allclose(np.diagonal(frame.combined_scale)[:3], IDENTITY_SCALE, atol=1e-10)
+        assert_allclose(
+            np.diagonal(frame.combined_scale)[:3], IDENTITY_SCALE, atol=1e-10
+        )
 
 
 @pytest.mark.unit
@@ -500,7 +494,9 @@ class TestRotationProperties:
         )
 
         assert_allclose(
-            frame.combined_rotation.as_matrix(), IDENTITY_ROTATION.as_matrix(), atol=1e-10
+            frame.combined_rotation.as_matrix(),
+            IDENTITY_ROTATION.as_matrix(),
+            atol=1e-10,
         )
 
 
@@ -512,7 +508,9 @@ class TestScalingProperties:
         frame = Frame(parent=Frame.global_frame()).scale(s1).scale(s2)
 
         expected = s1 * s2
-        assert_allclose(np.diagonal(frame.combined_scale)[:3], [expected] * 3, atol=1e-10)
+        assert_allclose(
+            np.diagonal(frame.combined_scale)[:3], [expected] * 3, atol=1e-10
+        )
 
     @given(
         sx1=scales,
@@ -524,8 +522,10 @@ class TestScalingProperties:
     )
     def test_non_uniform_scale_composition(self, sx1, sy1, sz1, sx2, sy2, sz2):
         """Multiple non-uniform scales should multiply component-wise"""
-        frame = Frame(parent=Frame.global_frame()).scale((sx1, sy1, sz1)).scale(
-            (sx2, sy2, sz2)
+        frame = (
+            Frame(parent=Frame.global_frame())
+            .scale((sx1, sy1, sz1))
+            .scale((sx2, sy2, sz2))
         )
 
         expected = [sx1 * sx2, sy1 * sy2, sz1 * sz2]
@@ -647,3 +647,135 @@ class TestTransformCopies:
 
         assert t1 is not t2
         assert_allclose(t1, t2)
+
+
+@pytest.mark.unit
+class TestDeepCopy:
+    def test_deepcopy_points_preserves_global_frame_singleton(self):
+        """Deepcopy of Points should preserve global frame singleton"""
+        from copy import deepcopy
+
+        points = [
+            Frame.global_frame().create_point(x=i, y=0, z=0) for i in range(10)
+        ]
+
+        copied_points = deepcopy(points)
+
+        for point in copied_points:
+            assert point.frame is Frame.global_frame()
+
+    def test_deepcopy_vectors_preserves_global_frame_singleton(self):
+        """Deepcopy of Vectors should preserve global frame singleton"""
+        from copy import deepcopy
+
+        vectors = [
+            Frame.global_frame().create_vector(x=i, y=1, z=0) for i in range(5)
+        ]
+
+        copied_vectors = deepcopy(vectors)
+
+        for vector in copied_vectors:
+            assert vector.frame is Frame.global_frame()
+
+    def test_deepcopy_frame_creates_independent_copy(self):
+        """Deepcopy of a regular frame should create independent copy"""
+        from copy import deepcopy
+
+        frame = Frame(parent=Frame.global_frame(), name="test").translate(x=1, y=2)
+
+        copied_frame = deepcopy(frame)
+
+        assert copied_frame is not frame
+        assert copied_frame.parent is Frame.global_frame()
+        assert_allclose(
+            copied_frame.combined_translation, frame.combined_translation
+        )
+
+        frame.translate(x=5)
+        assert not np.allclose(
+            copied_frame.combined_translation, frame.combined_translation
+        )
+
+    def test_deepcopy_orphan_frame_preserves_singleton(self):
+        """Deepcopy of an orphan frame should preserve singleton (orphans are frozen)"""
+        from copy import deepcopy
+
+        orphan = Frame.create_orphan(name="orphan")
+
+        copied_orphan = deepcopy(orphan)
+
+        assert copied_orphan is orphan
+        assert copied_orphan is not Frame.global_frame()
+        assert copied_orphan.parent is None
+        assert copied_orphan.name == "orphan"
+
+    def test_deepcopy_frame_hierarchy(self):
+        """Deepcopy of frame hierarchy should preserve structure"""
+        from copy import deepcopy
+
+        parent = Frame(parent=Frame.global_frame(), name="parent").translate(x=1)
+        child = Frame(parent=parent, name="child").translate(y=2)
+
+        copied_child = deepcopy(child)
+
+        assert copied_child is not child
+        assert copied_child.parent is not parent
+        assert copied_child.parent.parent is Frame.global_frame()
+
+        expected_global = np.eye(4)
+        expected_global[:3, 3] = [1, 2, 0]
+        assert_allclose(copied_child.transform_to_global, expected_global)
+
+    def test_deepcopy_preserves_transformations(self):
+        """Deepcopy should preserve all transformations"""
+        from copy import deepcopy
+
+        frame = (
+            Frame(parent=Frame.global_frame(), name="test")
+            .translate(x=1, y=2, z=3)
+            .rotate_euler(z=45, degrees=True)
+            .scale(2.0)
+        )
+
+        copied_frame = deepcopy(frame)
+
+        assert_allclose(
+            copied_frame.transform_to_parent, frame.transform_to_parent, atol=1e-10
+        )
+        assert_allclose(
+            copied_frame.combined_translation, frame.combined_translation, atol=1e-10
+        )
+        assert_allclose(
+            copied_frame.combined_rotation.as_matrix(),
+            frame.combined_rotation.as_matrix(),
+            atol=1e-10,
+        )
+        assert_allclose(
+            copied_frame.combined_scale, frame.combined_scale, atol=1e-10
+        )
+
+    def test_deepcopy_frozen_state_preserved(self):
+        """Deepcopy should preserve frozen state"""
+        from copy import deepcopy
+
+        orphan = Frame.create_orphan(name="frozen_orphan")
+
+        copied_orphan = deepcopy(orphan)
+
+        assert copied_orphan._is_frozen is True
+        with pytest.raises(RuntimeError, match="Can not modify frozen frame"):
+            copied_orphan.translate(x=1)
+
+    def test_deepcopy_points_with_orphan_frame_preserves_singleton(self):
+        """Deepcopy of Points with orphan frame should preserve orphan singleton"""
+        from copy import deepcopy
+
+        orphan = Frame.create_orphan(name="robot")
+        points = [orphan.create_point(x=i, y=0, z=0) for i in range(5)]
+
+        copied_points = deepcopy(points)
+
+        for point in copied_points:
+            assert point.frame is orphan
+
+        assert all(p.frame is copied_points[0].frame for p in copied_points)

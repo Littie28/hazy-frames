@@ -7,6 +7,7 @@ with parent-child relationships, and transformations are cached for performance.
 
 from __future__ import annotations
 
+import copy
 from functools import reduce, wraps
 from operator import add, mul
 from typing import TYPE_CHECKING, Literal, Self
@@ -61,18 +62,6 @@ class Frame:
         name: Human-readable frame identifier
     """
 
-    def __new__(
-        cls,
-        parent: Frame | None = None,
-        name: str | None = None,
-        _allow_orphan: bool = False,
-    ) -> Self | Frame:
-        if parent is None and not _allow_orphan:
-            return cls.global_frame()
-        else:
-            instance = super().__new__(cls)
-            return instance
-
     def __init__(
         self,
         parent: Frame | None = None,
@@ -82,26 +71,23 @@ class Frame:
     ):
         """Initialize a new reference frame.
 
-        Note:
-            Calling Frame() without parent returns the global singleton frame.
-            Providing a name in this case will raise a ValueError.
-
         Args:
-            parent: Parent frame (None for root frames)
+            parent: Parent frame (required unless using internal _allow_orphan flag)
             name: Frame identifier (auto-generated if not provided)
             _allow_orphan: Internal flag to allow creation without parent
 
         Raises:
-            ValueError: If name is provided but global singleton is returned
+            TypeError: If parent is None and not using class methods
         """
-        if hasattr(self, "parent"):
-            if name is not None:
-                raise ValueError(
-                    f"Cannot specify name '{name}' when creating global frame "
-                    f"singleton. Use Frame(parent=..., name='{name}') or "
-                    "Frame.global_frame() instead."
-                )
+        if hasattr(self, "_parent"):
             return
+
+        if parent is None and not _allow_orphan:
+            raise TypeError(
+                "Frame() missing required argument: 'parent'. "
+                "Use Frame.global_frame() to get the global frame, "
+                "or Frame.create_orphan() to create a frame without parent."
+            )
 
         self._parent: Frame | None = parent
         self._name = name or f"Frame-{id(self)}"
@@ -117,7 +103,29 @@ class Frame:
 
     @classmethod
     def create_orphan(cls, name: str | None = None) -> Frame:
-        return cls(parent=None, name=name, _allow_orphan=True)
+        instance = cls(parent=None, name=name, _allow_orphan=True)
+        instance.freeze()
+        return instance
+
+    def __deepcopy__(self, memo):
+        """Custom deepcopy to preserve singletons (global frame and orphans).
+
+        Orphan frames are treated as singletons because:
+        - They are frozen (immutable)
+        - Their name is their identity
+        - A copy would be functionally identical but break identity checks
+        """
+        if self is Frame.global_frame() or self.parent is None:
+            return self
+
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        for k, v in self.__dict__.items():
+            setattr(result, k, copy.deepcopy(v, memo))
+
+        return result
 
     @property
     def parent(self) -> Frame | None:
@@ -294,6 +302,7 @@ class Frame:
         """
         if cls._global_frame is None:
             cls._global_frame = Frame(parent=None, name="global", _allow_orphan=True)
+            cls._global_frame.freeze()
         return cls._global_frame
 
     @property

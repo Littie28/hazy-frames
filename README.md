@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 ![Coverage](./.github/badges/coverage.svg)
-![Tests](https://img.shields.io/badge/tests-112%20passed-success)
+![Tests](https://img.shields.io/badge/tests-117%20passed-success)
 
 **Hierarchical coordinate frames - crystal clear transforms**
 

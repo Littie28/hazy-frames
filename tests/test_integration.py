@@ -129,13 +129,13 @@ class TestRobotKinematics:
 
         shoulder = Frame(parent=base, name="shoulder").rotate_euler(z=90, degrees=True)
 
-        elbow = Frame(parent=shoulder, name="elbow").translate(x=1, y=0, z=0).rotate_euler(
-            z=-45, degrees=True
+        elbow = (
+            Frame(parent=shoulder, name="elbow")
+            .translate(x=1, y=0, z=0)
+            .rotate_euler(z=-45, degrees=True)
         )
 
-        end_effector = Frame(parent=elbow, name="end_effector").translate(
-            x=1, y=0, z=0
-        )
+        end_effector = Frame(parent=elbow, name="end_effector").translate(x=1, y=0, z=0)
 
         tcp = Point(0, 0, 0, frame=end_effector)
         tcp_global = tcp.to_global()
@@ -146,7 +146,9 @@ class TestRobotKinematics:
         expected_y = 1 + sin45
         expected_z = 0
 
-        assert_allclose(tcp_global.coords, [expected_x, expected_y, expected_z], atol=1e-10)
+        assert_allclose(
+            tcp_global.coords, [expected_x, expected_y, expected_z], atol=1e-10
+        )
 
     def test_camera_calibration_scenario(self):
         """Simulate camera mounted on robot scenario"""
@@ -154,9 +156,11 @@ class TestRobotKinematics:
 
         robot_base = Frame(parent=global_frame, name="robot").translate(x=0.5, y=0, z=0)
 
-        camera_frame = Frame(parent=robot_base, name="camera").translate(
-            x=0, y=0.2, z=0.3
-        ).rotate_euler(x=90, degrees=True)
+        camera_frame = (
+            Frame(parent=robot_base, name="camera")
+            .translate(x=0, y=0.2, z=0.3)
+            .rotate_euler(x=90, degrees=True)
+        )
 
         observed_point_camera = Point(0, 0, 1, frame=camera_frame)
         observed_point_global = observed_point_camera.to_global()
@@ -166,7 +170,9 @@ class TestRobotKinematics:
         expected_z = 0.3
 
         assert_allclose(
-            observed_point_global.coords, [expected_x, expected_y, expected_z], atol=VVSMALL
+            observed_point_global.coords,
+            [expected_x, expected_y, expected_z],
+            atol=VVSMALL,
         )
 
 
@@ -271,7 +277,7 @@ class TestVectorOperations:
 class TestOrphanFrames:
     def test_orphan_frame_is_own_global(self):
         """Test that orphan frames define their own global coordinate system"""
-        orphan = Frame.create_orphan(name="orphan").translate(x=1)
+        orphan = Frame.create_orphan(name="orphan")
 
         point = Point(0, 0, 0, frame=orphan)
         point_global = point.to_global()
@@ -281,16 +287,14 @@ class TestOrphanFrames:
 
     def test_orphan_frame_transform_to_global_is_identity(self):
         """Test that orphan frames have identity transform to global"""
-        orphan = Frame.create_orphan(name="orphan").translate(x=5).rotate_euler(
-            z=45, degrees=True
-        )
+        orphan = Frame.create_orphan(name="orphan")
 
         assert_allclose(orphan.transform_to_global, np.eye(4), atol=VVSMALL)
 
     def test_transform_between_orphan_frames_raises(self):
         """Test that transformation between independent orphan frames raises error"""
-        orphan1 = Frame.create_orphan(name="orphan1").translate(x=1)
-        orphan2 = Frame.create_orphan(name="orphan2").rotate_euler(z=90, degrees=True)
+        orphan1 = Frame.create_orphan(name="orphan1")
+        orphan2 = Frame.create_orphan(name="orphan2")
 
         point = Point(1, 0, 0, frame=orphan1)
 
@@ -310,7 +314,9 @@ class TestOrphanFrames:
         expected_y = -2
         expected_z = 0
 
-        assert_allclose(point_in_child2.coords, [expected_x, expected_y, expected_z], atol=VVSMALL)
+        assert_allclose(
+            point_in_child2.coords, [expected_x, expected_y, expected_z], atol=VVSMALL
+        )
 
     def test_orphan_frame_independent_hierarchies(self):
         """Test that different orphan frame hierarchies are independent"""
