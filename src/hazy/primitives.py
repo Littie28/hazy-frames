@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Self, overload
 
 import numpy as np
 
-from hazy.constants import VSMALL
+from hazy.constants import VSMALL, VVSMALL
 from hazy.utils import check_same_frame
 
 if TYPE_CHECKING:
@@ -75,6 +75,19 @@ class GeometricPrimitive:
     def z(self) -> float:
         """Z coordinate."""
         return self._homogeneous[2]
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, GeometricPrimitive):
+            self_global = self.to_global()
+            value_global = value.to_global()
+            return np.allclose(
+                self_global._homogeneous, value_global._homogeneous, atol=VVSMALL
+            )
+        else:
+            raise ValueError(
+                f"Can not compare {self} of type {self.__class__.__qualname__} "
+                f"with onject of type {type(value)}"
+            )
 
     def __getitem__(self, index: int) -> float:
         """Access coordinates by index: primitive[0] for x, primitive[1] for y, etc."""
