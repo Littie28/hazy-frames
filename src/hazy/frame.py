@@ -14,10 +14,11 @@ from typing import TYPE_CHECKING, Literal, Self
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from hazy.constants import IDENTITY_ROTATION, IDENTITY_SCALE, IDENTITY_TRANSLATION
 from hazy.primitives import Point, Vector
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from numpy.typing import ArrayLike, NDArray
 
     # from laser_cross_calibration.coordinate_system.primitives import Point, Vector
 
@@ -60,28 +61,83 @@ class Frame:
         name: Human-readable frame identifier
     """
 
+    def __new__(
+        cls,
+        parent: Frame | None = None,
+        name: str | None = None,
+        _allow_orphan: bool = False,
+    ) -> Self | Frame:
+        if parent is None and not _allow_orphan:
+            return cls.global_frame()
+        else:
+            instance = super().__new__(cls)
+            return instance
+
     def __init__(
         self,
         parent: Frame | None = None,
         name: str | None = None,
+        *,
+        _allow_orphan: bool = False,
     ):
         """Initialize a new reference frame.
+
+        Note:
+            Calling Frame() without parent returns the global singleton frame.
+            Providing a name in this case will raise a ValueError.
 
         Args:
             parent: Parent frame (None for root frames)
             name: Frame identifier (auto-generated if not provided)
-        """
-        self.parent = parent
-        self.name = name or f"Frame-{id(self)}"
+            _allow_orphan: Internal flag to allow creation without parent
 
-        self._rotations: list[Rotation] = [Rotation.identity()]
-        self._translations: list[NDArray[np.floating]] = [np.zeros(3, dtype=float)]
-        self._scalings: list[NDArray[np.floating]] = [np.ones(3, dtype=float)]
+        Raises:
+            ValueError: If name is provided but global singleton is returned
+        """
+        if hasattr(self, "parent"):
+            if name is not None:
+                raise ValueError(
+                    f"Cannot specify name '{name}' when creating global frame "
+                    f"singleton. Use Frame(parent=..., name='{name}') or "
+                    "Frame.global_frame() instead."
+                )
+            return
+
+        self._parent: Frame | None = parent
+        self._name = name or f"Frame-{id(self)}"
+
+        self._rotations: list[Rotation] = [IDENTITY_ROTATION]
+        self._translations: list[NDArray[np.floating]] = [IDENTITY_TRANSLATION]
+        self._scalings: list[NDArray[np.floating]] = [IDENTITY_SCALE]
 
         self._cached_transform: NDArray[np.floating] | None = None
         self._cached_transform_global: NDArray[np.floating] | None = None
 
         self._is_frozen = False
+
+    @classmethod
+    def create_orphan(cls, name: str | None = None) -> Frame:
+        return cls(parent=None, name=name, _allow_orphan=True)
+
+    @property
+    def parent(self) -> Frame | None:
+        return self._parent
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def root(self) -> Frame:
+        """Get the root frame of this hierarchy.
+
+        Returns:
+            Root frame (self if no parent, otherwise traverses up to root)
+        """
+        current = self
+        while current.parent is not None:
+            current = current.parent
+        return current
 
     @property
     def combined_rotation(self) -> Rotation:
@@ -205,7 +261,7 @@ class Frame:
         return self
 
     @invalidate_transform_cache
-    def scale(self, scale: float | tuple[float, float, float]) -> Self:
+    def scale(self, scale: float | tuple[float, float, float] | ArrayLike) -> Self:
         """Add scaling to frame.
 
         Args:
@@ -237,7 +293,7 @@ class Frame:
             Global frame instance
         """
         if cls._global_frame is None:
-            cls._global_frame = Frame(parent=None, name="global")
+            cls._global_frame = Frame(parent=None, name="global", _allow_orphan=True)
         return cls._global_frame
 
     @property
@@ -278,15 +334,25 @@ class Frame:
 
         Returns:
             4x4 transformation matrix from self to target
+
+        Raises:
+            RuntimeError: If frames belong to different hierarchies (different roots)
         """
         if self == target:
             return np.eye(4)
+
+        if self.root is not target.root:
+            raise RuntimeError(
+                f"Cannot transform between frames from different hierarchies. "
+                f"Frame '{self.name}' has root '{self.root.name}', "
+                f"but frame '{target.name}' has root '{target.root.name}'."
+            )
 
         return target.transform_from_global @ self.transform_to_global
 
     @property
     def unit_x(self) -> Vector:
-        return Vector(x=np.diagonal(self.combined_scale)[0], y=0.0, z=0.0, frame=self)
+        return Vector(x=1.0, y=0.0, z=0.0, frame=self)
 
     @property
     def unit_x_global(self) -> Vector:
@@ -294,7 +360,7 @@ class Frame:
 
     @property
     def unit_y(self) -> Vector:
-        return Vector(x=0.0, y=np.diagonal(self.combined_scale)[1], z=0.0, frame=self)
+        return Vector(x=0.0, y=1.0, z=0.0, frame=self)
 
     @property
     def unit_y_global(self) -> Vector:
@@ -302,7 +368,7 @@ class Frame:
 
     @property
     def unit_z(self) -> Vector:
-        return Vector(x=0.0, y=0.0, z=np.diagonal(self.combined_scale)[2], frame=self)
+        return Vector(x=0.0, y=0.0, z=1.0, frame=self)
 
     @property
     def unit_z_global(self) -> Vector:

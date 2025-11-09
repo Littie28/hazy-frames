@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Self, overload
 
 import numpy as np
 
-from hazy.constants import VSMALL
+from hazy.constants import VSMALL, VVSMALL
 from hazy.utils import check_same_frame
 
 if TYPE_CHECKING:
@@ -76,6 +76,19 @@ class GeometricPrimitive:
         """Z coordinate."""
         return self._homogeneous[2]
 
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, GeometricPrimitive):
+            self_global = self.to_global()
+            value_global = value.to_global()
+            return np.allclose(
+                self_global._homogeneous, value_global._homogeneous, atol=VVSMALL
+            )
+        else:
+            raise ValueError(
+                f"Can not compare {self} of type {self.__class__.__qualname__} "
+                f"with onject of type {type(value)}"
+            )
+
     def __getitem__(self, index: int) -> float:
         """Access coordinates by index: primitive[0] for x, primitive[1] for y, etc."""
         return self.coords[index]
@@ -104,7 +117,15 @@ class GeometricPrimitive:
             return type(self)(x=x, y=y, z=z, w=0.0, frame=target_frame)
 
     def to_global(self) -> Self:
-        return self.to_frame(target_frame=self.frame.global_frame())
+        """Transform to the root frame of this primitive's hierarchy.
+
+        For frames with parents, this transforms to the top-most parent.
+        For orphan frames, this returns coordinates in the orphan frame itself.
+
+        Returns:
+            Primitive in root frame coordinates
+        """
+        return self.to_frame(target_frame=self.frame.root)
 
     def __repr__(self) -> str:
         return (
@@ -395,6 +416,5 @@ class Point(GeometricPrimitive):
     @classmethod
     def from_array(cls, points: NDArray, frame) -> list[Point]:
         """Creates a list of Point instances from an array of points."""
-        print(points.shape)
-
+        points = np.asarray(points)
         return [cls(x=x, y=y, z=z, frame=frame) for x, y, z in points.T]
