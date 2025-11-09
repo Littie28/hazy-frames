@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 ![Coverage](./.github/badges/coverage.svg)
+![Tests](https://img.shields.io/badge/tests-112%20passed-success)
 
 **Hierarchical coordinate frames - crystal clear transforms**
 
@@ -21,8 +22,16 @@ A Python library for managing hierarchical reference frames and frame-aware geom
 
 ## Installation
 
+Install directly from GitHub:
+
 ```bash
-# !!! Not yet packaged !!!
+pip install git+https://github.com/Littie28/hazy-frames.git
+```
+
+Or download the wheel from [releases](https://github.com/Littie28/hazy-frames/releases/latest):
+
+```bash
+pip install hazy_frames-0.1.0-py3-none-any.whl
 ```
 
 For development:
@@ -210,7 +219,7 @@ pytest -m integration
 
 # Watch mode for development
 pytest-watcher
-
+```
 ## License
 
  This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
