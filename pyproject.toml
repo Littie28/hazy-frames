@@ -4,15 +4,10 @@ version = "0.1.0"
 description = "Hierarchical coordinate frames - crystal clear transforms"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = { text = "MIT" }
 keywords = ["geometry", "coordinate-systems", "transformations", "frames", "3d"]
-authors = [
-    {name = "Littie28"}
-]
-dependencies = [
-    "numpy>=2.3.4",
-    "scipy>=1.16.3",
-]
+authors = [{ name = "Littie28" }]
+dependencies = ["numpy>=2.3.4", "scipy>=1.16.3"]
 
 [project.urls]
 Homepage = "https://github.com/Littie28/hazy-frames"
@@ -34,7 +29,7 @@ dev = [
 
 [tool.ruff]
 line-length = 88
-exclude = ["docs"]
+exclude = ["docs", "tests"]
 
 [tool.ruff.lint]
 select = [
