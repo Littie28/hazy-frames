@@ -397,15 +397,44 @@ class Frame:
     def create_point(self, x: float, y: float, z: float) -> Point:
         return Point(x=x, y=y, z=z, frame=self)
 
-    def batch_transform_global(
+    def batch_transform_points_global(
         self, points: NDArray[np.floating]
     ) -> NDArray[np.floating]:
+        """Batch transform an array of points from this coordinate system to global.
+        Homogenous coordinate (w=1) will be added automatically.
+
+        Args
+            points: array of 3d points, will be reshaped to (N, 3)
+
+        Returns:
+            points transformed to global space
+        """
         points = np.asarray(points)
         original_shape = points.shape
         points_homogenous = np.hstack(
             [points.reshape(-1, 3), np.ones((points.size // 3, 1))]
         )
         transformed = points_homogenous @ self.transform_to_global.T
+        return transformed[:, :3].reshape(original_shape)
+
+    def batch_transform_vectors_global(
+        self, vectors: NDArray[np.floating]
+    ) -> NDArray[np.floating]:
+        """Batch transform an array of vectors from this coordinate system to global.
+        Homogenous coordinate (w=0) will be added automatically.
+
+        Args
+            vectors: array of 3d vectors, will be reshaped to (N, 3)
+
+        Returns:
+            vectors transformed to global space
+        """
+        vectors = np.asarray(vectors)
+        original_shape = vectors.shape
+        vectors_homogenous = np.hstack(
+            [vectors.reshape(-1, 3), np.ones((vectors.size // 3, 1))]
+        )
+        transformed = vectors_homogenous @ self.transform_to_global.T
         return transformed[:, :3].reshape(original_shape)
 
     def __repr__(self) -> str:
@@ -421,3 +450,7 @@ class Frame:
             f"parent='{parent_name}', "
             f"transforms={transforms}{frozen})"
         )
+
+    def make_child(self, name: str | None = None) -> Frame:
+        """Creates a frame with this frame as its parent."""
+        return Frame(parent=self, name=name)

@@ -51,11 +51,11 @@ uv sync --group dev
 from hazy import Frame, Point, Vector
 
 # Create a frame hierarchy
-world = Frame(name="world")
+world = Frame.get_global()
 robot = Frame(parent=world, name="robot")
 robot.translate(x=5, y=0, z=0).rotate_euler(z=90, degrees=True)
 
-camera = Frame(parent=robot, name="camera")
+camera = robot.make_child(name="camera")  # different initialization methods
 camera.translate(x=0, y=0, z=1)
 
 # Create frame-aware primitives
@@ -78,7 +78,7 @@ Frames represent coordinate systems and can be organized hierarchically:
 
 ```python
 # Create frames
-parent = Frame(name="parent")
+parent = Frame.global_frame().make_child("parent")
 child = Frame(parent=parent, name="child")
 
 # Apply transformations (chainable)
