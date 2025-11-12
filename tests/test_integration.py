@@ -31,7 +31,7 @@ class TestMultiFrameTransformations:
         expected_y = 0.5 + 0.1
         expected_z = 0.0
         assert_allclose(
-            point_global.coords, [expected_x, expected_y, expected_z], atol=VVSMALL
+            point_global, [expected_x, expected_y, expected_z], atol=VVSMALL
         )
 
     def test_vector_transformation_preserves_direction(self):
@@ -44,7 +44,7 @@ class TestMultiFrameTransformations:
         vector_local = Vector(1, 0, 0, frame=rotated)
         vector_global = vector_local.to_global()
 
-        assert_allclose(vector_global.coords, [0, 1, 0], atol=VVSMALL)
+        assert_allclose(vector_global, [0, 1, 0], atol=VVSMALL)
 
     def test_point_arithmetic_across_frame_hierarchy(self):
         """Test point arithmetic when transforming between frames"""
@@ -61,7 +61,7 @@ class TestMultiFrameTransformations:
         displacement = point_b_global - point_a_global
 
         assert isinstance(displacement, Vector)
-        assert_allclose(displacement.coords, [-1, 1, 0], atol=VVSMALL)
+        assert_allclose(displacement, [-1, 1, 0], atol=VVSMALL)
 
 
 @pytest.mark.integration
@@ -85,9 +85,7 @@ class TestComplexTransformations:
         expected_y = 1 + 2 * 1 * sin45
         expected_z = 0
 
-        assert_allclose(
-            point_global.coords, [expected_x, expected_y, expected_z], atol=1e-10
-        )
+        assert_allclose(point_global, [expected_x, expected_y, expected_z], atol=1e-10)
 
     def test_deep_hierarchy_accumulation(self):
         """Test transformation accumulation through deep hierarchy"""
@@ -102,7 +100,7 @@ class TestComplexTransformations:
         point = Point(0, 0, 0, frame=current_frame)
         point_global = point.to_global()
 
-        assert_allclose(point_global.coords, [5, 0, 0], atol=VVSMALL)
+        assert_allclose(point_global, [5, 0, 0], atol=VVSMALL)
 
     def test_non_uniform_scale_with_rotation(self):
         """Test that non-uniform scaling works correctly with rotation"""
@@ -116,7 +114,7 @@ class TestComplexTransformations:
         vector = Vector(1, 0, 0, frame=frame)
         vector_global = vector.to_global()
 
-        assert_allclose(vector_global.coords, [0, 2, 0], atol=VVSMALL)
+        assert_allclose(vector_global, [0, 2, 0], atol=VVSMALL)
 
 
 @pytest.mark.integration
@@ -146,9 +144,7 @@ class TestRobotKinematics:
         expected_y = 1 + sin45
         expected_z = 0
 
-        assert_allclose(
-            tcp_global.coords, [expected_x, expected_y, expected_z], atol=1e-10
-        )
+        assert_allclose(tcp_global, [expected_x, expected_y, expected_z], atol=1e-10)
 
     def test_camera_calibration_scenario(self):
         """Simulate camera mounted on robot scenario"""
@@ -170,7 +166,7 @@ class TestRobotKinematics:
         expected_z = 0.3
 
         assert_allclose(
-            observed_point_global.coords,
+            observed_point_global,
             [expected_x, expected_y, expected_z],
             atol=VVSMALL,
         )
@@ -189,7 +185,7 @@ class TestBatchOperations:
 
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
-        transformed = frame.batch_transform_global(points)
+        transformed = frame.batch_transform_points_global(points)
 
         expected = np.array([[1, 2, 3], [1, 3, 3], [0, 2, 3], [1, 2, 4]])
 
@@ -209,9 +205,9 @@ class TestBatchOperations:
 
         points_in_target = [p.to_frame(target_frame) for p in points]
 
-        assert_allclose(points_in_target[0].coords, [1, -1, 0], atol=VVSMALL)
-        assert_allclose(points_in_target[1].coords, [2, -1, 0], atol=VVSMALL)
-        assert_allclose(points_in_target[2].coords, [1, 0, 0], atol=VVSMALL)
+        assert_allclose(points_in_target[0], [1, -1, 0], atol=VVSMALL)
+        assert_allclose(points_in_target[1], [2, -1, 0], atol=VVSMALL)
+        assert_allclose(points_in_target[2], [1, 0, 0], atol=VVSMALL)
 
 
 @pytest.mark.integration
@@ -227,7 +223,7 @@ class TestFrameFreezingInHierarchy:
         point = Point(0, 0, 0, frame=child)
         point_global = point.to_global()
 
-        assert_allclose(point_global.coords, [1, 1, 0], atol=VVSMALL)
+        assert_allclose(point_global, [1, 1, 0], atol=VVSMALL)
 
     def test_frozen_frame_prevents_modifications(self):
         """Test that frozen frames in hierarchy still transform correctly"""
@@ -239,7 +235,7 @@ class TestFrameFreezingInHierarchy:
         point = Point(1, 1, 1, frame=child)
         point_global = point.to_global()
 
-        assert_allclose(point_global.coords, [2, 2, 1], atol=VVSMALL)
+        assert_allclose(point_global, [2, 2, 1], atol=VVSMALL)
 
 
 @pytest.mark.integration
@@ -257,7 +253,7 @@ class TestVectorOperations:
 
         cross_global = v1_global.cross(v2_global)
 
-        assert_allclose(cross_global.coords, [0, 0, 1], atol=VVSMALL)
+        assert_allclose(cross_global, [0, 0, 1], atol=VVSMALL)
 
     def test_vector_magnitude_invariant_under_translation(self):
         """Test that vector magnitude is invariant under translation"""
@@ -282,7 +278,7 @@ class TestOrphanFrames:
         point = Point(0, 0, 0, frame=orphan)
         point_global = point.to_global()
 
-        assert_allclose(point_global.coords, [0, 0, 0], atol=VVSMALL)
+        assert_allclose(point_global, [0, 0, 0], atol=VVSMALL)
         assert point_global.frame is orphan
 
     def test_orphan_frame_transform_to_global_is_identity(self):
@@ -315,7 +311,7 @@ class TestOrphanFrames:
         expected_z = 0
 
         assert_allclose(
-            point_in_child2.coords, [expected_x, expected_y, expected_z], atol=VVSMALL
+            point_in_child2, [expected_x, expected_y, expected_z], atol=VVSMALL
         )
 
     def test_orphan_frame_independent_hierarchies(self):
@@ -329,8 +325,132 @@ class TestOrphanFrames:
         point1 = Point(0, 0, 0, frame=child1)
         point2 = Point(0, 0, 0, frame=child2)
 
-        assert_allclose(point1.to_global().coords, [1, 0, 0], atol=VVSMALL)
-        assert_allclose(point2.to_global().coords, [2, 0, 0], atol=VVSMALL)
+        assert_allclose(point1.to_global(), [1, 0, 0], atol=VVSMALL)
+        assert_allclose(point2.to_global(), [2, 0, 0], atol=VVSMALL)
 
         assert point1.to_global().frame is orphan1
         assert point2.to_global().frame is orphan2
+
+
+class TestBuildinIntegration:
+    """Test operations between Python native types and Vector/Point."""
+
+    def test_add_scalar_point_raises(self):
+        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+
+        # integer
+        with pytest.raises(TypeError, match="unsupported operand"):
+            point = point + 5
+
+        # float
+        with pytest.raises(TypeError, match="unsupported operand"):
+            point = point + 5.0
+
+        # complex
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            point = point + z
+
+    def test_add_scalar_vector_raises(self):
+        vector = Frame.global_frame().vector(1.0, 0.0, 0.0)
+
+        # integer
+        with pytest.raises(TypeError, match="unsupported operand"):
+            vector = vector + 5
+
+        # float
+        with pytest.raises(TypeError, match="unsupported operand"):
+            vector = vector + 5.0
+
+        # complex
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            vector = vector + z
+
+    def test_subtract_scalar_point(self):
+        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+
+        # integer
+        with pytest.raises(TypeError, match="unsupported operand"):
+            point = point - 5
+
+        # float
+        with pytest.raises(TypeError, match="unsupported operand"):
+            point = point - 5.0
+
+        # complex
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            point = point - z
+
+    def test_subtract_scalar_vector(self):
+        vector = Frame.global_frame().vector(1.0, 0.0, 0.0)
+
+        # integer
+        with pytest.raises(TypeError, match="unsupported operand"):
+            vector = vector - 5
+
+        # float
+        with pytest.raises(TypeError, match="unsupported operand"):
+            vector = vector - 5.0
+
+        # complex
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            vector = vector - z
+
+    def test_multiply_scalar_point(self):
+        # integer
+        point = Frame.global_frame().point(1.0, 1.0, 1.0)
+        point = point * 5
+        expected = Frame.global_frame().point(5.0, 5.0, 5.0)
+        assert isinstance(point, Point)
+        assert_allclose(point, expected)
+
+        # float
+        point = Frame.global_frame().point(1.0, 1.0, 1.0)
+        point = point * 5.0
+        expected = Frame.global_frame().point(5.0, 5.0, 5.0)
+        assert isinstance(point, Point)
+        assert_allclose(point, expected)
+
+        # complex
+        point = Frame.global_frame().point(1.0, 1.0, 1.0)
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            point = point * z
+
+    def test_multiply_scalar_vector(self):
+        # integer
+        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        vector = vector * 5
+        expected = Frame.global_frame().vector(5.0, 5.0, 5.0)
+        assert isinstance(vector, Vector)
+        assert_allclose(vector, expected)
+
+        # float
+        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        vector = vector * 5.0
+        expected = Frame.global_frame().vector(5.0, 5.0, 5.0)
+        assert isinstance(vector, Vector)
+        assert_allclose(vector, expected)
+
+        # complex
+        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        with pytest.raises(TypeError, match="unsupported operand"):
+            z = 5.0 + 1j
+            vector = vector * z
+
+
+@pytest.mark.integration
+class TestNumpyIntegration:
+    def test_numpy_add_point(self):
+        """Test if"""
+        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+        array = np.array((1.0, 2.0, 3.0))
+
+        point = point + array
+
+        expected = Frame.global_frame().point(1.0, 2.0, 3.0)
+        assert isinstance(point, np.ndarray)
+        assert_allclose(point, expected)

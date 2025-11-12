@@ -360,28 +360,28 @@ class Frame:
         return target.transform_from_global @ self.transform_to_global
 
     @property
-    def unit_x(self) -> Vector:
+    def x_axis(self) -> Vector:
         return Vector(x=1.0, y=0.0, z=0.0, frame=self)
 
     @property
-    def unit_x_global(self) -> Vector:
-        return self.unit_x.to_frame(target_frame=Frame.global_frame())
+    def x_axis_global(self) -> Vector:
+        return self.x_axis.to_frame(target_frame=Frame.global_frame())
 
     @property
-    def unit_y(self) -> Vector:
+    def y_axis(self) -> Vector:
         return Vector(x=0.0, y=1.0, z=0.0, frame=self)
 
     @property
-    def unit_y_global(self) -> Vector:
-        return self.unit_y.to_frame(target_frame=Frame.global_frame())
+    def y_axis_global(self) -> Vector:
+        return self.y_axis.to_frame(target_frame=Frame.global_frame())
 
     @property
-    def unit_z(self) -> Vector:
+    def z_axis(self) -> Vector:
         return Vector(x=0.0, y=0.0, z=1.0, frame=self)
 
     @property
-    def unit_z_global(self) -> Vector:
-        return self.unit_z.to_frame(target_frame=Frame.global_frame())
+    def z_axis_global(self) -> Vector:
+        return self.z_axis.to_frame(target_frame=Frame.global_frame())
 
     @property
     def origin(self) -> Point:
@@ -391,10 +391,10 @@ class Frame:
     def origin_global(self):
         return self.origin.to_frame(target_frame=Frame.global_frame())
 
-    def create_vector(self, x: float, y: float, z: float) -> Vector:
+    def vector(self, x: float, y: float, z: float) -> Vector:
         return Vector(x=x, y=y, z=z, frame=self)
 
-    def create_point(self, x: float, y: float, z: float) -> Point:
+    def point(self, x: float, y: float, z: float) -> Point:
         return Point(x=x, y=y, z=z, frame=self)
 
     def batch_transform_points_global(

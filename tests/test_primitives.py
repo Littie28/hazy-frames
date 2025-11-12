@@ -10,7 +10,9 @@ from hazy import Frame
 from hazy.primitives import Point, Vector
 
 coords = floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False)
-small_coords = floats(min_value=-100, max_value=100, allow_nan=False, allow_infinity=False)
+small_coords = floats(
+    min_value=-100, max_value=100, allow_nan=False, allow_infinity=False
+)
 angles = floats(min_value=-180, max_value=180, allow_nan=False, allow_infinity=False)
 
 
@@ -23,10 +25,12 @@ class TestPointTransformations:
         point = Point(x, y, z, frame=frame)
         transformed = point.to_frame(frame)
 
-        assert_allclose(point.coords, transformed.coords, atol=1e-10)
+        assert_allclose(point, transformed, atol=1e-10)
         assert transformed.frame is frame
 
-    @given(x=coords, y=coords, z=coords, dx=small_coords, dy=small_coords, dz=small_coords)
+    @given(
+        x=coords, y=coords, z=coords, dx=small_coords, dy=small_coords, dz=small_coords
+    )
     def test_point_transform_roundtrip(self, x, y, z, dx, dy, dz):
         """Transform point to different frame and back equals original"""
         frame1 = Frame(parent=Frame.global_frame(), name="f1")
@@ -39,22 +43,20 @@ class TestPointTransformations:
         point = Point(x, y, z, frame=frame1)
         roundtrip = point.to_frame(frame2).to_frame(frame1)
 
-        assert_allclose(point.coords, roundtrip.coords, atol=1e-8)
+        assert_allclose(point, roundtrip, atol=1e-8)
 
     @given(x=coords, y=coords, z=coords, tx=small_coords)
     def test_point_translation_invariance_through_frames(self, x, y, z, tx):
         """Point should have same global coords regardless of frame definition"""
         global_frame = Frame.global_frame()
-        translated_frame = Frame(parent=global_frame, name="translated").translate(
-            x=tx
-        )
+        translated_frame = Frame(parent=global_frame, name="translated").translate(x=tx)
 
         point_in_global = Point(x, y, z, frame=global_frame)
         point_in_local = Point(x - tx, y, z, frame=translated_frame)
 
         assert_allclose(
-            point_in_global.to_global().coords,
-            point_in_local.to_global().coords,
+            point_in_global.to_global(),
+            point_in_local.to_global(),
             atol=1e-10,
         )
 
@@ -68,7 +70,7 @@ class TestVectorTransformations:
         vector = Vector(x, y, z, frame=frame)
         transformed = vector.to_frame(frame)
 
-        assert_allclose(vector.coords, transformed.coords, atol=1e-10)
+        assert_allclose(vector, transformed, atol=1e-10)
         assert transformed.frame is frame
 
     @given(
@@ -90,20 +92,18 @@ class TestVectorTransformations:
         vector = Vector(x, y, z, frame=frame1)
         roundtrip = vector.to_frame(frame2).to_frame(frame1)
 
-        assert_allclose(vector.coords, roundtrip.coords, atol=1e-8)
+        assert_allclose(vector, roundtrip, atol=1e-8)
 
     @given(x=coords, y=coords, z=coords, tx=small_coords)
     def test_vector_translation_invariant(self, x, y, z, tx):
         """Vectors should be invariant to translation (w=0)"""
         global_frame = Frame.global_frame()
-        translated_frame = Frame(parent=global_frame, name="translated").translate(
-            x=tx
-        )
+        translated_frame = Frame(parent=global_frame, name="translated").translate(x=tx)
 
         vector = Vector(x, y, z, frame=translated_frame)
         vector_global = vector.to_global()
 
-        assert_allclose(vector.coords, vector_global.coords, atol=1e-10)
+        assert_allclose(vector, vector_global, atol=1e-10)
 
 
 @pytest.mark.unit
@@ -127,7 +127,7 @@ class TestPointArithmetic:
 
         assert isinstance(v, Vector)
         assert isinstance(result, Point)
-        assert_allclose(result.coords, p.coords, atol=1e-10)
+        assert_allclose(result, p, atol=1e-10)
 
     @given(
         x1=small_coords,
@@ -146,7 +146,7 @@ class TestPointArithmetic:
         result = (p + v) - v
 
         assert isinstance(result, Point)
-        assert_allclose(result.coords, p.coords, atol=1e-10)
+        assert_allclose(result, p, atol=1e-10)
 
     def test_point_plus_point_raises_type_error(self):
         """Adding two points should raise TypeError"""
@@ -177,7 +177,7 @@ class TestVectorArithmetic:
         result1 = v1 + v2
         result2 = v2 + v1
 
-        assert_allclose(result1.coords, result2.coords, atol=1e-10)
+        assert_allclose(result1, result2, atol=1e-10)
 
     @given(x=small_coords, y=small_coords, z=small_coords, scale=small_coords)
     def test_vector_scalar_multiplication_commutative(self, x, y, z, scale):
@@ -188,7 +188,7 @@ class TestVectorArithmetic:
         result1 = v * scale
         result2 = scale * v
 
-        assert_allclose(result1.coords, result2.coords, atol=1e-10)
+        assert_allclose(result1, result2, atol=1e-10)
 
     @given(
         x=small_coords,
@@ -206,7 +206,7 @@ class TestVectorArithmetic:
 
         result = (v1 + v2) - v2
 
-        assert_allclose(result.coords, v1.coords, atol=1e-10)
+        assert_allclose(result, v1, atol=1e-10)
 
     def test_vector_minus_point_raises_type_error(self):
         """Subtracting point from vector should raise TypeError"""
@@ -225,7 +225,9 @@ class TestErrorHandling:
         frame = Frame.global_frame()
         zero_vector = Vector(0, 0, 0, frame=frame)
 
-        with pytest.raises(RuntimeError, match="Can not normalize vector with zero length"):
+        with pytest.raises(
+            RuntimeError, match="Can not normalize vector with zero length"
+        ):
             zero_vector.normalize()
 
     def test_equality_with_non_geometric_type_raises(self):
@@ -291,8 +293,8 @@ class TestVectorProperties:
         cross = v1.cross(v2)
 
         if not v1.is_zero and not v2.is_zero and not cross.is_zero:
-            dot1 = np.dot(cross.coords, v1.coords)
-            dot2 = np.dot(cross.coords, v2.coords)
+            dot1 = np.dot(cross, v1)
+            dot2 = np.dot(cross, v2)
             assert abs(dot1) < 1e-8
             assert abs(dot2) < 1e-8
 
@@ -303,7 +305,7 @@ class TestVectorProperties:
         v = Vector(x, y, z, frame=frame)
         neg_v = -v
 
-        assert_allclose(neg_v.coords, -v.coords, atol=1e-10)
+        assert_allclose(neg_v, -v, atol=1e-10)
         assert neg_v.frame is v.frame
 
 
@@ -397,7 +399,7 @@ class TestSpecialMethods:
 
         assert v1 == v2
         assert v1 is not v2
-        assert_allclose(v1.coords, v2.coords)
+        assert_allclose(v1, v2)
 
 
 @pytest.mark.unit
@@ -406,21 +408,21 @@ class TestFactoryMethods:
         frame = Frame.global_frame()
         v = Vector.create_unit_x(frame)
 
-        assert_allclose(v.coords, [1, 0, 0])
+        assert_allclose(v, [1, 0, 0])
         assert v.frame is frame
 
     def test_vector_create_unit_y(self):
         frame = Frame.global_frame()
         v = Vector.create_unit_y(frame)
 
-        assert_allclose(v.coords, [0, 1, 0])
+        assert_allclose(v, [0, 1, 0])
         assert v.frame is frame
 
     def test_vector_create_unit_z(self):
         frame = Frame.global_frame()
         v = Vector.create_unit_z(frame)
 
-        assert_allclose(v.coords, [0, 0, 1])
+        assert_allclose(v, [0, 0, 1])
         assert v.frame is frame
 
     def test_vector_create_nan(self):
@@ -436,7 +438,7 @@ class TestFactoryMethods:
         frame = Frame.global_frame()
         p = Point.create_origin(frame)
 
-        assert_allclose(p.coords, [0, 0, 0])
+        assert_allclose(p, [0, 0, 0])
         assert p.frame is frame
 
     def test_point_create_nan(self):
@@ -455,8 +457,8 @@ class TestFactoryMethods:
         points = Point.from_array(points_array, frame)
 
         assert len(points) == 2
-        assert_allclose(points[0].coords, [1, 3, 5])
-        assert_allclose(points[1].coords, [2, 4, 6])
+        assert_allclose(points[0], [1, 3, 5])
+        assert_allclose(points[1], [2, 4, 6])
         assert all(p.frame is frame for p in points)
 
 

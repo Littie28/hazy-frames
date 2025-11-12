@@ -135,7 +135,7 @@ point_target = point_local.to_frame(target_frame)
 
 # Batch transformations for efficiency
 points_array = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-transformed = frame.batch_transform_global(points_array)
+transformed = frame.batch_transform_points_global(points_array)
 ```
 
 ### Unit Vectors and Origin
@@ -144,14 +144,14 @@ Frames provide convenient accessors for unit vectors and origin:
 
 ```python
 # Unit vectors in frame's local coordinates
-x_axis = frame.unit_x  # Vector(1, 0, 0) scaled by frame
-y_axis = frame.unit_y
-z_axis = frame.unit_z
+x_axis = frame.x_axis 
+y_axis = frame.y_axis
+z_axis = frame.z_axis
 
 # Unit vectors in global coordinates
-x_global = frame.unit_x_global
-y_global = frame.unit_y_global
-z_global = frame.unit_z_global
+x_global = frame.x_axis_global
+y_global = frame.y_axis_global
+z_global = frame.z_axis_global
 
 # Frame origin
 origin_local = frame.origin  # Point(0, 0, 0) in frame
@@ -172,8 +172,8 @@ origin_global = frame.origin_global  # Origin in global coords
 | `transform_to_parent` | 4x4 transformation matrix to parent |
 | `transform_to_global` | 4x4 transformation matrix to global |
 | `transform_to(target)` | 4x4 transformation matrix to target frame |
-| `create_point(x, y, z)` | Create Point in this frame |
-| `create_vector(x, y, z)` | Create Vector in this frame |
+| `point(x, y, z)` | Create Point in this frame |
+| `vector(x, y, z)` | Create Vector in this frame |
 
 ### Point Class
 
@@ -182,7 +182,6 @@ origin_global = frame.origin_global  # Origin in global coords
 | `to_frame(target)` | Transform to target frame |
 | `to_global()` | Transform to global frame |
 | `x`, `y`, `z` | Coordinate components |
-| `coords` | NumPy array of coordinates |
 | `Point + Vector` | Returns Point (displacement) |
 | `Point - Point` | Returns Vector (difference) |
 | `Point - Vector` | Returns Point (reverse displacement) |
@@ -194,7 +193,6 @@ origin_global = frame.origin_global  # Origin in global coords
 | `to_frame(target)` | Transform to target frame |
 | `to_global()` | Transform to global frame |
 | `x`, `y`, `z` | Vector components |
-| `coords` | NumPy array of components |
 | `magnitude` | Vector length |
 | `normalize()` | Normalize to unit length (in-place) |
 | `cross(other)` | Cross product with another vector |

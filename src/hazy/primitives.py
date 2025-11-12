@@ -39,11 +39,6 @@ class GeometricPrimitive:
         self._homogeneous = np.array([x, y, z, w], dtype=float)
         self.frame = frame
 
-    @property
-    def coords(self) -> NDArray[np.floating]:
-        """Return Cartesian coordinates (x, y, z) as numpy array."""
-        return self._homogeneous[:3]
-
     def __array__(self, dtype=None, copy=None) -> np.ndarray:
         """Return Cartesian coordinates for numpy operations.
 
@@ -91,11 +86,11 @@ class GeometricPrimitive:
 
     def __getitem__(self, index: int) -> float:
         """Access coordinates by index: primitive[0] for x, primitive[1] for y, etc."""
-        return self.coords[index]
+        return np.array(self)[index]
 
     def __iter__(self):
         """Iterate over Cartesian coordinates."""
-        return iter(self.coords)
+        return iter(np.array(self))
 
     def to_frame(self, target_frame: Frame) -> Self:
         """Transform this primitive to a different reference frame.
@@ -138,12 +133,12 @@ class GeometricPrimitive:
 
     def __mul__(self, other: ArrayLike):
         copy = self.copy()
-        copy._homogeneous[:3] = copy.coords * np.asarray(other)
+        copy._homogeneous[:3] = np.array(copy) * np.asarray(other)
         return copy
 
     def __rmul__(self, other: ArrayLike):
         copy = self.copy()
-        copy._homogeneous[:3] = copy.coords * np.asarray(other)
+        copy._homogeneous[:3] = np.array(copy) * np.asarray(other)
         return copy
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
@@ -161,7 +156,7 @@ class GeometricPrimitive:
 
         # For other ufuncs, convert to array and return array result
         # This handles operations where maintaining custom type doesn't make sense
-        args = [x.coords if isinstance(x, GeometricPrimitive) else x for x in inputs]
+        args = [np.array(x) if isinstance(x, GeometricPrimitive) else x for x in inputs]
         return getattr(ufunc, method)(*args, **kwargs)
 
     def copy(self) -> Self:
@@ -311,7 +306,7 @@ class Vector(GeometricPrimitive):
             RuntimeError: If frames don't match
         """
         check_same_frame(self, other)
-        x, y, z = np.cross(self.coords, other.coords)
+        x, y, z = np.cross(self, other)
         return Vector(x, y, z, frame=self.frame)
 
 
