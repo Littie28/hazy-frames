@@ -208,6 +208,24 @@ class Frame:
         return self
 
     @invalidate_transform_cache
+    def rotate_quaternion(
+        self, quaternion: ArrayLike, *, scalar_first: bool = False
+    ) -> Self:
+        """Add Quaternion rotation to frame:
+
+        Args:
+            quaternion: a (4, ) or (N, 4) array describing a rotation with a quaternion
+            scalar_first: Wether the the scaling is the first or last element of the
+                quaternion
+
+        Returns:
+            Self for method chaining
+        """
+        R = Rotation.from_quaternion(quaternion, scalar_first=scalar_first)
+        self._rotations.append(R)
+        return self
+
+    @invalidate_transform_cache
     def rotate(self, rotation) -> Self:
         """Add rotation matrix to frame.
 
