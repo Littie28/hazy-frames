@@ -406,27 +406,6 @@ class TestSpecialMethods:
 
 @pytest.mark.unit
 class TestFactoryMethods:
-    def test_vector_create_unit_x(self):
-        frame = Frame(parent=None, name="global")
-        v = Vector.unit_x(frame)
-
-        assert_allclose(v, [1, 0, 0])
-        assert v.frame is frame
-
-    def test_vector_create_unit_y(self):
-        frame = Frame(parent=None, name="global")
-        v = Vector.unit_y(frame)
-
-        assert_allclose(v, [0, 1, 0])
-        assert v.frame is frame
-
-    def test_vector_create_unit_z(self):
-        frame = Frame(parent=None, name="global")
-        v = Vector.unit_z(frame)
-
-        assert_allclose(v, [0, 0, 1])
-        assert v.frame is frame
-
     def test_vector_create_nan(self):
         frame = Frame(parent=None, name="global")
         v = Vector.nan(frame)

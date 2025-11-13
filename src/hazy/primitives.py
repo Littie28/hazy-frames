@@ -87,6 +87,17 @@ class GeometricPrimitive:
         return self._homogeneous[2]
 
     def __eq__(self, value: object) -> bool:
+        """Check equality by comparing global coordinates.
+
+        Args:
+            value: Object to compare with
+
+        Returns:
+            True if both primitives represent the same position/direction in global space
+
+        Raises:
+            ValueError: If comparing with non-GeometricPrimitive
+        """
         if isinstance(value, GeometricPrimitive):
             self_global = self.to_global()
             value_global = value.to_global()
@@ -96,14 +107,14 @@ class GeometricPrimitive:
         else:
             raise ValueError(
                 f"Can not compare {self} of type {self.__class__.__qualname__} "
-                f"with onject of type {type(value)}"
+                f"with object of type {type(value)}"
             )
 
     def __getitem__(self, index: int) -> float:
         """Access coordinates by index: primitive[0] for x, primitive[1] for y, etc."""
         return np.array(self)[index]
 
-    def __iter__(self):
+    def __iter__(self) -> np.flatiter:
         """Iterate over Cartesian coordinates."""
         return iter(np.array(self))
 
@@ -115,6 +126,13 @@ class GeometricPrimitive:
 
         Returns:
             New primitive of same type in target frame
+
+        Examples:
+            >>> world = Frame.make_root("world")
+            >>> camera = world.make_child("camera").translate(x=1.0)
+            >>> p_world = world.point(0, 0, 0)
+            >>> p_camera = p_world.to_frame(camera)
+            >>> p_camera.x  # -1.0 (camera is 1 unit away in x)
         """
         transformation = self.frame.transform_to(target=target_frame)
         x, y, z, w = transformation @ self._homogeneous
@@ -229,6 +247,10 @@ class GeometricPrimitive:
         )
 
     def __array_function__(self, func, types, inputs, kwargs):
+        """Handle numpy array functions to maintain type consistency.
+
+        Dispatches to registered implementations in HANDLED_ARRAY_FUNCTIONS.
+        """
         if func not in HANDLED_ARRAY_FUNCTIONS:
             return NotImplemented
 
@@ -247,70 +269,166 @@ class GeometricPrimitive:
         )
 
     def round(self, decimals: int = 0) -> Self:
+        """Round coordinates to given number of decimals.
+
+        Args:
+            decimals: Number of decimal places
+
+        Returns:
+            New primitive with rounded coordinates
+        """
         out = self.copy()
         out._homogeneous[:3] = np.round(self._homogeneous[:3], decimals=decimals)
         return out
 
     def round_(self, decimals: int = 0) -> Self:
+        """Round coordinates in-place to given number of decimals.
+
+        Args:
+            decimals: Number of decimal places
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.round(self._homogeneous[:3], decimals=decimals)
         return self
 
     def clip(self, a_min: float = -np.inf, a_max: float = np.inf) -> Self:
+        """Clip coordinates to given range.
+
+        Args:
+            a_min: Minimum value
+            a_max: Maximum value
+
+        Returns:
+            New primitive with clipped coordinates
+        """
         out = self.copy()
         out._homogeneous[:3] = np.clip(self._homogeneous[:3], a_min=a_min, a_max=a_max)
         return out
 
     def clip_(self, a_min: float = -np.inf, a_max: float = np.inf) -> Self:
+        """Clip coordinates in-place to given range.
+
+        Args:
+            a_min: Minimum value
+            a_max: Maximum value
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.clip(self._homogeneous[:3], a_min=a_min, a_max=a_max)
         return self
 
     def floor(self) -> Self:
+        """Return primitive with coordinates rounded down to nearest integer.
+
+        Returns:
+            New primitive with floored coordinates
+        """
         copy = self.copy()
         copy._homogeneous[:3] = np.floor(copy._homogeneous[:3])
         return copy
 
     def floor_(self) -> Self:
+        """Round coordinates down to nearest integer in-place.
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.floor(self._homogeneous[:3])
         return self
 
     def fix(self) -> Self:
+        """Return primitive with coordinates rounded toward zero.
+
+        Returns:
+            New primitive with fixed coordinates
+        """
         copy = self.copy()
         copy._homogeneous[:3] = np.fix(copy._homogeneous[:3])
         return copy
 
     def fix_(self) -> Self:
+        """Round coordinates toward zero in-place.
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.fix(self._homogeneous[:3])
         return self
 
     def ceil(self) -> Self:
+        """Return primitive with coordinates rounded up to nearest integer.
+
+        Returns:
+            New primitive with ceiling coordinates
+        """
         copy = self.copy()
         copy._homogeneous[:3] = np.ceil(copy._homogeneous[:3])
         return copy
 
     def ceil_(self) -> Self:
+        """Round coordinates up to nearest integer in-place.
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.ceil(self._homogeneous[:3])
         return self
 
     def trunc(self) -> Self:
+        """Return primitive with coordinates truncated toward zero.
+
+        Returns:
+            New primitive with truncated coordinates
+        """
         copy = self.copy()
         copy._homogeneous[:3] = np.trunc(copy._homogeneous[:3])
         return copy
 
     def trunc_(self) -> Self:
+        """Truncate coordinates toward zero in-place.
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.trunc(self._homogeneous[:3])
         return self
 
     def rint(self) -> Self:
+        """Return primitive with coordinates rounded to nearest integer.
+
+        Returns:
+            New primitive with rounded coordinates
+        """
         copy = self.copy()
         copy._homogeneous[:3] = np.rint(copy._homogeneous[:3])
         return copy
 
     def rint_(self) -> Self:
+        """Round coordinates to nearest integer in-place.
+
+        Returns:
+            Self for method chaining
+        """
         self._homogeneous[:3] = np.rint(self._homogeneous[:3])
         return self
 
     @classmethod
     def from_array(cls, array: ArrayLike, frame: Frame) -> Self:
+        """Create geometric primitive from array with homogeneous coordinates.
+
+        Args:
+            array: Array-like with 4 elements [x, y, z, w]
+            frame: Reference frame
+
+        Returns:
+            New geometric primitive
+
+        Raises:
+            ValueError: If array doesn't have exactly 4 elements
+        """
         array = np.asarray(array).flatten()
         if array.shape != (4,):
             raise ValueError(f"Expected 4 coordinates, got {array.shape}")
@@ -338,6 +456,11 @@ class Vector(GeometricPrimitive):
             z: Z component
             frame: Reference frame
             w: Homogeneous coordinate (should be 0 for vectors)
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = Vector(x=1.0, y=2.0, z=3.0, frame=frame)
+            >>> frame.vector(1.0, 2.0, 3.0)  # Convenience method
         """
         super().__init__(x=x, y=y, z=z, w=w, frame=frame)
 
@@ -363,6 +486,14 @@ class Vector(GeometricPrimitive):
 
         Raises:
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> v1 = frame.vector(1, 0, 0)
+            >>> v2 = frame.vector(0, 1, 0)
+            >>> v1 + v2  # Vector(x=1, y=1, z=0)
+            >>> p = frame.point(1, 2, 3)
+            >>> v1 + p  # Point(x=2, y=2, z=3)
         """
         if isinstance(other, Point):
             check_same_frame(self, other)
@@ -395,6 +526,12 @@ class Vector(GeometricPrimitive):
         Raises:
             TypeError: If attempting to subtract Point from Vector
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> v1 = frame.vector(3, 2, 1)
+            >>> v2 = frame.vector(1, 1, 1)
+            >>> v1 - v2  # Vector(x=2, y=1, z=0)
         """
         if isinstance(other, Point):
             raise TypeError("Cannot subtract Point from Vector")
@@ -406,6 +543,23 @@ class Vector(GeometricPrimitive):
             return other.__rsub__(self)
 
     def __mul__(self, other: float | np.generic) -> Vector:
+        """Multiply vector by scalar.
+
+        Args:
+            other: Scalar value
+
+        Returns:
+            New vector scaled by scalar
+
+        Raises:
+            TypeError: If other is not a scalar or is complex
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = frame.vector(1, 2, 3)
+            >>> v * 2  # Vector(x=2, y=4, z=6)
+            >>> 0.5 * v  # Vector(x=0.5, y=1.0, z=1.5)
+        """
         if not np.isscalar(other):
             raise TypeError(
                 f"Can only multiply with Vector by scalar, got {type(other)}"
@@ -420,10 +574,34 @@ class Vector(GeometricPrimitive):
         return copy
 
     def __rmul__(self, other: float | np.generic) -> Vector:
+        """Multiply scalar by vector (commutative).
+
+        Args:
+            other: Scalar value
+
+        Returns:
+            New vector scaled by scalar
+        """
         return self.__mul__(other)
 
     def __truediv__(self, other: float | np.generic) -> Vector:
-        """Divide vector by scalar."""
+        """Divide vector by scalar.
+
+        Args:
+            other: Scalar value
+
+        Returns:
+            New vector divided by scalar
+
+        Raises:
+            TypeError: If other is not a scalar
+            ZeroDivisionError: If dividing by zero
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = frame.vector(2, 4, 6)
+            >>> v / 2  # Vector(x=1, y=2, z=3)
+        """
         if not np.isscalar(other):
             raise TypeError(f"Can only divide Vector by scalar, got {type(other)}")
         if other == 0:
@@ -434,33 +612,45 @@ class Vector(GeometricPrimitive):
 
     @property
     def magnitude(self) -> float:
+        """Euclidean length of the vector."""
         return float(np.linalg.norm(self._homogeneous[:3]))
 
     @property
     def is_zero(self) -> bool:
+        """Check if vector has near-zero magnitude."""
         return self.magnitude < VSMALL
 
     def normalize(self) -> Self:
+        """Normalize vector to unit length in-place.
+
+        Returns:
+            Self for method chaining
+
+        Raises:
+            RuntimeError: If vector has zero length
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = frame.vector(3, 4, 0)
+            >>> v.magnitude  # 5.0
+            >>> v.normalize()
+            >>> v.magnitude  # 1.0
+        """
         if self.is_zero:
             raise RuntimeError(f"Can not normalize vector with zero length {self}")
         self._homogeneous[:3] /= self.magnitude
         return self
 
     @classmethod
-    def unit_x(cls, frame: Frame) -> Vector:
-        return cls(x=1.0, y=0.0, z=0.0, frame=frame)
-
-    @classmethod
-    def unit_y(cls, frame: Frame) -> Vector:
-        return cls(x=0.0, y=1.0, z=0.0, frame=frame)
-
-    @classmethod
-    def unit_z(cls, frame: Frame) -> Vector:
-        return cls(x=0.0, y=0.0, z=1.0, frame=frame)
-
-    @classmethod
     def nan(cls, frame: Frame) -> Vector:
-        """Return a point at the origin of the specified coordinate system"""
+        """Create vector with NaN coordinates.
+
+        Args:
+            frame: Reference frame
+
+        Returns:
+            Vector with all coordinates set to NaN
+        """
         return cls(x=np.nan, y=np.nan, z=np.nan, frame=frame)
 
     def __neg__(self) -> Vector:
@@ -468,6 +658,11 @@ class Vector(GeometricPrimitive):
 
         Returns:
             Vector with inverted x, y, z components in the same frame
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = frame.vector(1, -2, 3)
+            >>> -v  # Vector(x=-1, y=2, z=-3)
         """
         return Vector(-self.x, -self.y, -self.z, frame=self.frame)
 
@@ -482,6 +677,12 @@ class Vector(GeometricPrimitive):
 
         Raises:
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> v1 = frame.vector(1, 0, 0)
+            >>> v2 = frame.vector(0, 1, 0)
+            >>> v1.cross(v2)  # Vector(x=0, y=0, z=1)
         """
         check_same_frame(self, other)
         x, y, z = np.cross(np.array(self), np.array(other))
@@ -498,12 +699,35 @@ class Vector(GeometricPrimitive):
 
         Raises:
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> v1 = frame.vector(1, 2, 3)
+            >>> v2 = frame.vector(4, 5, 6)
+            >>> v1.dot(v2)  # 32.0
         """
         check_same_frame(self, other)
         return np.dot(np.array(self), np.array(other))
 
     @classmethod
     def from_array(cls, array: ArrayLike, frame: Frame) -> Self:
+        """Create vector from array with Cartesian coordinates.
+
+        Args:
+            array: Array-like with 3 elements [x, y, z]
+            frame: Reference frame
+
+        Returns:
+            New vector (w=0 set automatically)
+
+        Raises:
+            ValueError: If array doesn't have exactly 3 elements
+
+        Examples:
+            >>> frame = Frame()
+            >>> v = Vector.from_array([1, 2, 3], frame=frame)
+            >>> v = Vector.from_array(np.array([1.0, 2.0, 3.0]), frame=frame)
+        """
         array = np.asarray(array).flatten()
         if array.shape != (3,):
             raise ValueError(f"Expected 3 coordinates, got {array.shape}")
@@ -531,6 +755,11 @@ class Point(GeometricPrimitive):
             z: Z coordinate
             frame: Reference frame
             w: Homogeneous coordinate (should be 1 for points)
+
+        Examples:
+            >>> frame = Frame()
+            >>> p = Point(x=1.0, y=2.0, z=3.0, frame=frame)
+            >>> frame.point(1.0, 2.0, 3.0)  # Convenience method
         """
         super().__init__(x=x, y=y, z=z, w=w, frame=frame)
 
@@ -556,6 +785,14 @@ class Point(GeometricPrimitive):
 
         Raises:
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> p1 = frame.point(5, 3, 1)
+            >>> p2 = frame.point(2, 1, 0)
+            >>> p1 - p2  # Vector(x=3, y=2, z=1)
+            >>> v = frame.vector(1, 1, 1)
+            >>> p1 - v  # Point(x=4, y=2, z=0)
         """
         if isinstance(other, Point):
             check_same_frame(self, other)
@@ -588,6 +825,12 @@ class Point(GeometricPrimitive):
         Raises:
             TypeError: If attempting to add two Points
             RuntimeError: If frames don't match
+
+        Examples:
+            >>> frame = Frame()
+            >>> p = frame.point(1, 2, 3)
+            >>> v = frame.vector(1, 0, 0)
+            >>> p + v  # Point(x=2, y=2, z=3)
         """
         if isinstance(other, Point):
             raise TypeError("Can not add 2 Points.")
@@ -598,7 +841,12 @@ class Point(GeometricPrimitive):
         else:
             return other.__add__(self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any) -> None:
+        """Multiplication is undefined for points.
+
+        Raises:
+            TypeError: Always, with explanation of alternatives
+        """
         raise TypeError(
             f"Scalar multiplication of {self.__class__.__qualname__} is undefined. "
             "Points can only be scaled relative to an origin. Use:\n"
@@ -607,13 +855,18 @@ class Point(GeometricPrimitive):
             "  np.array(point) * scalar  # Coordinate manipulation"
         )
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: Any) -> None:
+        """Division is undefined for points.
+
+        Raises:
+            TypeError: Always, with explanation of alternatives
+        """
         raise TypeError(
             f"Scalar division of {self.__class__.__qualname__} is undefined. "
             "Points can only be scaled relative to an origin. Use:\n"
-            "  (point - origin) * scalar + origin  # Scale relative to origin\n"
+            "  (point - origin) / scalar + origin  # Scale relative to origin\n"
             "Or convert to array:\n"
-            "  np.array(point) * scalar  # Coordinate manipulation"
+            "  np.array(point) / scalar  # Coordinate manipulation"
         )
 
     @classmethod
@@ -623,20 +876,66 @@ class Point(GeometricPrimitive):
 
     @classmethod
     def create_nan(cls, frame: Frame) -> Point:
-        """Return a point at the origin of the specified coordinate system"""
+        """Create point with NaN coordinates.
+
+        Args:
+            frame: Reference frame
+
+        Returns:
+            Point with all coordinates set to NaN
+        """
         return cls(x=np.nan, y=np.nan, z=np.nan, frame=frame)
 
     @classmethod
     def from_array(cls, array: ArrayLike, frame: Frame) -> Self:
+        """Create point from array with Cartesian coordinates.
+
+        Args:
+            array: Array-like with 3 elements [x, y, z]
+            frame: Reference frame
+
+        Returns:
+            New point (w=1 set automatically)
+
+        Raises:
+            ValueError: If array doesn't have exactly 3 elements
+
+        Examples:
+            >>> frame = Frame()
+            >>> p = Point.from_array([1, 2, 3], frame=frame)
+            >>> p = Point.from_array(np.array([1.0, 2.0, 3.0]), frame=frame)
+        """
         array = np.asarray(array).flatten()
         if array.shape != (3,):
             raise ValueError(f"Expected 3 coordinates, got {array.shape}")
         return cls(x=array[0], y=array[1], z=array[2], w=1.0, frame=frame)
 
     @classmethod
-    def list_from_array(cls, points: ArrayLike, frame) -> list[Point]:
-        """Creates a list of Point instances from an array of points."""
-        points = np.asarray(points).reshape((-1, 3))
+    def list_from_array(cls, points: ArrayLike, frame: Frame) -> list[Point]:
+        """Create list of points from array.
+
+        Args:
+            points: Array-like with shape (..., 3) where last dimension is coordinates
+            frame: Reference frame for all points
+
+        Returns:
+            List of Point instances
+
+        Raises:
+            ValueError: If last dimension is not 3
+
+        Examples:
+            >>> frame = Frame()
+            >>> points_array = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+            >>> points = Point.list_from_array(points_array, frame=frame)
+            >>> len(points)  # 3
+        """
+        points = np.asarray(points)
+        if points.shape[-1] != 3:
+            raise ValueError(
+                f"Expected last dimension to be 3 (x, y, z), got shape {points.shape}"
+            )
+        points = points.reshape((-1, 3))
         return [cls.from_array(arr, frame=frame) for arr in points]
 
 
@@ -688,41 +987,49 @@ def _clip_geometric[T: GeometricPrimitive](
 
 @implements(np.floor)
 def _floor_geometric[T: GeometricPrimitive](a: T, out=None) -> T:
+    """Floor coordinates to nearest integer below."""
     return a.floor()
 
 
 @implements(np.ceil)
 def _ceil_geometric[T: GeometricPrimitive](a: T, out=None) -> T:
+    """Ceil coordinates to nearest integer above."""
     return a.ceil()
 
 
 @implements(np.trunc)
 def _trunc_geometric[T: GeometricPrimitive](a: T, out=None) -> T:
+    """Truncate coordinates toward zero."""
     return a.trunc()
 
 
 @implements(np.rint)
 def _rint_geometric[T: GeometricPrimitive](a: T, out=None) -> T:
+    """Round coordinates to nearest integer."""
     return a.rint()
 
 
 @implements(np.fix)
 def _fix_geometric[T: GeometricPrimitive](a: T, out=None) -> T:
+    """Round coordinates toward zero."""
     return a.fix()
 
 
 @implements(np.isnan)
 def _isnan_geometric(a: GeometricPrimitive) -> NDArray[np.bool_]:
+    """Check which coordinates are NaN."""
     return np.isnan(a._homogeneous[:3])
 
 
 @implements(np.isinf)
 def _isinf_geometric(a: GeometricPrimitive) -> NDArray[np.bool_]:
+    """Check which coordinates are infinite."""
     return np.isinf(a._homogeneous[:3])
 
 
 @implements(np.isfinite)
 def _isfinite_geometric(a: GeometricPrimitive) -> NDArray[np.bool_]:
+    """Check which coordinates are finite."""
     return np.isfinite(a._homogeneous[:3])
 
 
