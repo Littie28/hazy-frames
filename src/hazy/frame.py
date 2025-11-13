@@ -21,8 +21,6 @@ from hazy.primitives import Point, Vector
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
 
-    # from laser_cross_calibration.coordinate_system.primitives import Point, Vector
-
 
 def invalidate_transform_cache(method):
     """Decorator to invalidate cached transforms when frame is modified.
