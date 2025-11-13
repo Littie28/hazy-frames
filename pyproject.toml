@@ -40,10 +40,12 @@ dev = [
     "hypothesis>=6.122.4",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.7",
+    "pre-commit>=4.4.0",
     "pytest>=8.4.1",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
     "pytest-watcher>=0.4.3",
+    "ruff>=0.14.5",
 ]
 
 [tool.ruff]
@@ -62,6 +64,11 @@ select = [
     "TC",  # type-checking
 ]
 exclude = ["*.ipynb"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "B015",
+] # Allow pointless comparisons in tests (testing error cases)
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]

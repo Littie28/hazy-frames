@@ -26,42 +26,30 @@ scales = floats(min_value=0.1, max_value=10, allow_nan=False, allow_infinity=Fal
 @pytest.mark.unit
 class TestFrameCreation:
     def test_return_global_singleton(self):
-        frame = Frame.global_frame()
+        frame = Frame(parent=None, name="global")
 
         assert frame.name == "global"
         assert frame.parent is None
 
     def test_creation_with_parent_and_name(self):
-        frame = Frame(parent=Frame.global_frame(), name="some sub-frame")
+        root = Frame(parent=None, name="root")
+        frame = Frame(parent=root, name="some sub-frame")
 
-        assert frame.parent is Frame.global_frame()
+        assert frame.parent is root
         assert frame.name == "some sub-frame"
 
     def test_auto_generated_name(self):
-        parent = Frame.global_frame()
+        parent = Frame(parent=None, name="global")
         frame = Frame(parent=parent)
 
         assert frame.name.startswith("Frame-")
         assert frame.parent is parent
 
-    def test_singleton_behavior(self):
-        frame1 = Frame.global_frame()
-        frame2 = Frame.global_frame()
-
-        assert frame1 is frame2
-
-    def test_create_orphan(self):
-        orphan = Frame.create_orphan(name="orphan")
-
-        assert orphan.name == "orphan"
-        assert orphan.parent is None
-        assert orphan is not Frame.global_frame()
-
 
 @pytest.mark.unit
 class TestFrameHierarchy:
     def test_hierarchical_frames(self):
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         parent_frame = Frame(parent=global_frame, name="parent")
         child_frame = Frame(parent=parent_frame, name="child")
 
@@ -73,7 +61,7 @@ class TestFrameHierarchy:
 @pytest.mark.unit
 class TestFrameInitialState:
     def test_initial_transform_state(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         assert len(frame._rotations) == 1
         assert len(frame._translations) == 1
@@ -83,14 +71,14 @@ class TestFrameInitialState:
         assert frame._is_frozen is False
 
     def test_identity_transform_initialization(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         assert_allclose(frame._rotations[0].as_matrix(), IDENTITY_ROTATION.as_matrix())
         assert_allclose(frame._translations[0], IDENTITY_TRANSLATION)
         assert_allclose(frame._scalings[0], IDENTITY_SCALE)
 
     def test_identity_transform_combination(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         assert_allclose(
             frame.combined_rotation.as_matrix(), IDENTITY_ROTATION.as_matrix()
@@ -112,118 +100,118 @@ class TestFrameInitialState:
 @pytest.mark.unit
 class TestFrameUnitVectors:
     def test_global_frame_unit_vectors(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
-        assert frame.unit_x == frame.unit_x_global
-        assert frame.unit_y == frame.unit_y_global
-        assert frame.unit_z == frame.unit_z_global
+        assert frame.x_axis == frame.x_axis_global
+        assert frame.y_axis == frame.y_axis_global
+        assert frame.z_axis == frame.z_axis_global
 
     def test_frame_unit_vectors_rotation(self):
-        parent = Frame(parent=Frame.global_frame(), name="parent").rotate_euler(
-            x=90, degrees=True
-        )
+        root = Frame(parent=None, name="root")
+        parent = Frame(parent=root, name="parent").rotate_euler(x=90, degrees=True)
 
-        assert parent.unit_x.frame == parent
-        assert_allclose(parent.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert parent.unit_y.frame == parent
-        assert_allclose(parent.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert parent.unit_z.frame == parent
-        assert_allclose(parent.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert parent.x_axis.frame == parent
+        assert_allclose(parent.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert parent.y_axis.frame == parent
+        assert_allclose(parent.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert parent.z_axis.frame == parent
+        assert_allclose(parent.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert parent.unit_x_global.frame == Frame.global_frame()
-        assert_allclose(parent.unit_x_global, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert parent.unit_y_global.frame == Frame.global_frame()
-        assert_allclose(parent.unit_y_global, [0.0, 0.0, 1.0], atol=VVSMALL)
-        assert parent.unit_z_global.frame == Frame.global_frame()
-        assert_allclose(parent.unit_z_global, [0.0, -1.0, 0.0], atol=VVSMALL)
+        assert parent.x_axis_global.frame is root
+        assert_allclose(parent.x_axis_global, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert parent.y_axis_global.frame is root
+        assert_allclose(parent.y_axis_global, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert parent.z_axis_global.frame is root
+        assert_allclose(parent.z_axis_global, [0.0, -1.0, 0.0], atol=VVSMALL)
 
         child = Frame(parent=parent, name="child").rotate_euler(y=180, degrees=True)
 
-        assert child.unit_x.frame == child
-        assert_allclose(child.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert child.unit_y.frame == child
-        assert_allclose(child.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert child.unit_z.frame == child
-        assert_allclose(child.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert child.x_axis.frame == child
+        assert_allclose(child.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert child.y_axis.frame == child
+        assert_allclose(child.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert child.z_axis.frame == child
+        assert_allclose(child.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert child.unit_x_global.frame == Frame.global_frame()
-        assert_allclose(child.unit_x_global, [-1.0, 0.0, 0.0], atol=VVSMALL)
-        assert child.unit_y_global.frame == Frame.global_frame()
-        assert_allclose(child.unit_y_global, [0.0, 0.0, 1.0], atol=VVSMALL)
-        assert child.unit_z_global.frame == Frame.global_frame()
-        assert_allclose(child.unit_z_global, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert child.x_axis_global.frame is root
+        assert_allclose(child.x_axis_global, [-1.0, 0.0, 0.0], atol=VVSMALL)
+        assert child.y_axis_global.frame is root
+        assert_allclose(child.y_axis_global, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert child.z_axis_global.frame is root
+        assert_allclose(child.z_axis_global, [0.0, 1.0, 0.0], atol=VVSMALL)
 
     def test_frame_unit_vectors_translation(self):
-        parent = Frame(parent=Frame.global_frame(), name="parent").translate(x=1)
+        root = Frame(parent=None, name="root")
+        parent = Frame(parent=root, name="parent").translate(x=1)
 
         assert parent.origin.frame == parent
         assert_allclose(parent.origin, [0.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(parent.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(parent.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(parent.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert parent.origin_global.frame == Frame.global_frame()
+        assert parent.origin_global.frame is root
         assert_allclose(parent.origin_global, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_x_global, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_y_global, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(parent.unit_z_global, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(parent.x_axis_global, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(parent.y_axis_global, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(parent.z_axis_global, [0.0, 0.0, 1.0], atol=VVSMALL)
 
         child = Frame(parent=parent, name="child").translate(y=2)
 
         assert child.origin.frame == child
         assert_allclose(child.origin, [0.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(child.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(child.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(child.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert child.origin_global.frame == Frame.global_frame()
+        assert child.origin_global.frame is root
         assert_allclose(child.origin_global, [1.0, 2.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_x_global, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_y_global, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(child.unit_z_global, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(child.x_axis_global, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(child.y_axis_global, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(child.z_axis_global, [0.0, 0.0, 1.0], atol=VVSMALL)
 
     def test_frame_unit_vectors_uniform_scale(self):
-        frame = Frame(parent=Frame.global_frame(), name="test")
+        frame = Frame(parent=Frame(parent=None, name="global"), name="test")
         frame.scale(2.0)
 
-        assert_allclose(frame.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert_allclose(frame.unit_x_global, [2.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y_global, [0.0, 2.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z_global, [0.0, 0.0, 2.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis_global, [2.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis_global, [0.0, 2.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis_global, [0.0, 0.0, 2.0], atol=VVSMALL)
 
     def test_frame_unit_vectors_non_uniform_scale(self):
-        frame = Frame(parent=Frame.global_frame(), name="test")
+        frame = Frame(parent=Frame(parent=None, name="global"), name="test")
         frame.scale((2.0, 3.0, 4.0))
 
-        assert_allclose(frame.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert_allclose(frame.unit_x_global, [2.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y_global, [0.0, 3.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z_global, [0.0, 0.0, 4.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis_global, [2.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis_global, [0.0, 3.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis_global, [0.0, 0.0, 4.0], atol=VVSMALL)
 
     def test_frame_unit_vectors_scale_and_rotation(self):
-        frame = Frame(parent=Frame.global_frame(), name="test")
+        frame = Frame(parent=Frame(parent=None, name="global"), name="test")
         frame.scale(2.0)
         frame.rotate_euler(z=90, degrees=True)
 
-        assert_allclose(frame.unit_x, [1.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y, [0.0, 1.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z, [0.0, 0.0, 1.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis, [0.0, 1.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis, [0.0, 0.0, 1.0], atol=VVSMALL)
 
-        assert_allclose(frame.unit_x_global, [0.0, 2.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_y_global, [-2.0, 0.0, 0.0], atol=VVSMALL)
-        assert_allclose(frame.unit_z_global, [0.0, 0.0, 2.0], atol=VVSMALL)
+        assert_allclose(frame.x_axis_global, [0.0, 2.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.y_axis_global, [-2.0, 0.0, 0.0], atol=VVSMALL)
+        assert_allclose(frame.z_axis_global, [0.0, 0.0, 2.0], atol=VVSMALL)
 
 
 @pytest.mark.unit
 class TestFreeze:
     def test_freeze_frame_rotation(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
         with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
             frame.rotate_euler(x=0.0)
@@ -231,7 +219,7 @@ class TestFreeze:
         frame.rotate_euler(x=0.0)
 
     def test_freeze_frame_translation(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
         with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
             frame.translate(x=0.0)
@@ -239,7 +227,7 @@ class TestFreeze:
         frame.translate(x=0.0)
 
     def test_freeze_frame_scale(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
         with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
             frame.scale(1.0)
@@ -250,7 +238,7 @@ class TestFreeze:
 @pytest.mark.unit
 class TestTransformations:
     def test_identity_to_global(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         assert isinstance(frame.transform_to_global, np.ndarray)
         assert frame.transform_from_global.shape == (4, 4)
@@ -258,7 +246,7 @@ class TestTransformations:
         assert_allclose(frame.transform_to_global, expected)
 
     def test_identity_to_parent(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         assert isinstance(frame.transform_to_parent, np.ndarray)
         assert frame.transform_to_parent.shape == (4, 4)
@@ -266,7 +254,7 @@ class TestTransformations:
         assert_allclose(frame.transform_to_parent, expected)
 
     def test_identity_to_frame(self):
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame = Frame(parent=global_frame)
 
         assert isinstance(global_frame.transform_to(frame), np.ndarray)
@@ -275,13 +263,13 @@ class TestTransformations:
         assert_allclose(global_frame.transform_to(frame), expected)
 
     def test_translation_to_parent(self):
-        frame = Frame(parent=Frame.global_frame()).translate(x=1, y=2, z=3)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=1, y=2, z=3)
         expected = np.eye(4)
         expected[:3, 3] = [1, 2, 3]
         assert_allclose(frame.transform_to_parent, expected)
 
     def test_rotation_to_parent(self):
-        frame = Frame(parent=Frame.global_frame()).rotate_euler(
+        frame = Frame(parent=Frame(parent=None, name="global")).rotate_euler(
             x=np.pi / 2, y=np.pi / 2, z=np.pi / 2
         )
 
@@ -292,17 +280,17 @@ class TestTransformations:
         assert_allclose(frame.transform_to_parent, expected)
 
     def test_scale_to_parent(self):
-        frame = Frame(parent=Frame.global_frame()).scale(3)
+        frame = Frame(parent=Frame(parent=None, name="global")).scale(3)
         expected = np.diag([3, 3, 3, 1])
         assert_allclose(frame.transform_to_parent, expected)
 
-        frame = Frame(parent=Frame.global_frame()).scale((2, 3, 4))
+        frame = Frame(parent=Frame(parent=None, name="global")).scale((2, 3, 4))
         expected = np.diag([2, 3, 4, 1])
         assert_allclose(frame.transform_to_parent, expected)
 
     def test_transform_from_parent_is_inverse(self):
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .translate(x=1, y=2, z=3)
             .rotate_euler(z=45, degrees=True)
             .scale(2.0)
@@ -312,14 +300,16 @@ class TestTransformations:
         assert_allclose(product, np.eye(4), atol=1e-10)
 
     def test_transform_from_global_is_inverse(self):
-        parent = Frame(parent=Frame.global_frame()).translate(x=5)
+        parent = Frame(parent=Frame(parent=None, name="global")).translate(x=5)
         child = Frame(parent=parent).rotate_euler(y=90, degrees=True)
 
         product = child.transform_to_global @ child.transform_from_global
         assert_allclose(product, np.eye(4), atol=1e-10)
 
     def test_transform_to_self_is_identity(self):
-        frame = Frame(parent=Frame.global_frame()).translate(x=1).scale(2.0)
+        frame = (
+            Frame(parent=Frame(parent=None, name="global")).translate(x=1).scale(2.0)
+        )
 
         assert_allclose(frame.transform_to(frame), np.eye(4))
 
@@ -327,7 +317,7 @@ class TestTransformations:
 @pytest.mark.unit
 class TestScaling:
     def test_scale_with_invalid_tuple_raises_value_error(self):
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         with pytest.raises(ValueError):
             frame.scale((1.0, 2.0))
@@ -339,8 +329,8 @@ class TestScaling:
 @pytest.mark.unit
 class TestFactoryMethods:
     def test_create_vector(self):
-        frame = Frame(parent=Frame.global_frame())
-        vector = frame.create_vector(1.0, 2.0, 3.0)
+        frame = Frame(parent=Frame(parent=None, name="global"))
+        vector = frame.vector(1.0, 2.0, 3.0)
 
         assert vector.x == 1.0
         assert vector.y == 2.0
@@ -348,8 +338,8 @@ class TestFactoryMethods:
         assert vector.frame is frame
 
     def test_create_point(self):
-        frame = Frame(parent=Frame.global_frame())
-        point = frame.create_point(4.0, 5.0, 6.0)
+        frame = Frame(parent=Frame(parent=None, name="global"))
+        point = frame.point(4.0, 5.0, 6.0)
 
         assert point.x == 4.0
         assert point.y == 5.0
@@ -360,27 +350,29 @@ class TestFactoryMethods:
 @pytest.mark.unit
 class TestBatchTransform:
     def test_batch_transform_global_single_point(self):
-        frame = Frame(parent=Frame.global_frame()).translate(x=1, y=2, z=3)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=1, y=2, z=3)
         points = np.array([[0, 0, 0]])
 
-        transformed = frame.batch_transform_global(points)
+        transformed = frame.batch_transform_points_global(points)
 
         assert_allclose(transformed, [[1, 2, 3]], atol=VVSMALL)
 
     def test_batch_transform_global_multiple_points(self):
-        frame = Frame(parent=Frame.global_frame()).translate(x=1, y=0, z=0)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=1, y=0, z=0)
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
 
-        transformed = frame.batch_transform_global(points)
+        transformed = frame.batch_transform_points_global(points)
 
         expected = np.array([[1, 0, 0], [2, 0, 0], [1, 1, 0]])
         assert_allclose(transformed, expected, atol=VVSMALL)
 
     def test_batch_transform_global_with_rotation(self):
-        frame = Frame(parent=Frame.global_frame()).rotate_euler(z=90, degrees=True)
+        frame = Frame(parent=Frame(parent=None, name="global")).rotate_euler(
+            z=90, degrees=True
+        )
         points = np.array([[1, 0, 0], [0, 1, 0]])
 
-        transformed = frame.batch_transform_global(points)
+        transformed = frame.batch_transform_points_global(points)
 
         expected = np.array([[0, 1, 0], [-1, 0, 0]])
         assert_allclose(transformed, expected, atol=VVSMALL)
@@ -394,7 +386,7 @@ class TestTransformationInverses:
     def test_transform_to_parent_inverse(self, tx, ty, tz, angle, scale):
         """transform_to_parent @ transform_from_parent = Identity"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .translate(x=tx, y=ty, z=tz)
             .rotate_euler(z=angle, degrees=True)
             .scale(scale)
@@ -406,7 +398,9 @@ class TestTransformationInverses:
     @given(tx=small_coords, ty=small_coords, tz=small_coords, angle=angles)
     def test_transform_to_global_inverse(self, tx, ty, tz, angle):
         """transform_to_global @ transform_from_global = Identity"""
-        parent = Frame(parent=Frame.global_frame()).translate(x=tx, y=ty, z=tz)
+        parent = Frame(parent=Frame(parent=None, name="global")).translate(
+            x=tx, y=ty, z=tz
+        )
         child = Frame(parent=parent).rotate_euler(z=angle, degrees=True)
 
         product = child.transform_to_global @ child.transform_from_global
@@ -421,7 +415,7 @@ class TestTransformationInverses:
     )
     def test_transform_to_is_inverse_of_transform_from(self, tx1, ty1, tx2, ty2, angle):
         """frame1.transform_to(frame2) is inverse of frame2.transform_to(frame1)"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame1 = Frame(parent=global_frame).translate(x=tx1, y=ty1)
         frame2 = (
             Frame(parent=global_frame)
@@ -441,7 +435,7 @@ class TestTranslationProperties:
     def test_translation_composition(self, tx1, ty1, tx2, ty2):
         """Multiple translations should accumulate"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .translate(x=tx1, y=ty1)
             .translate(x=tx2, y=ty2)
         )
@@ -452,7 +446,9 @@ class TestTranslationProperties:
     @given(tx=small_coords, ty=small_coords, tz=small_coords)
     def test_translation_only_affects_position(self, tx, ty, tz):
         """Translation should not affect rotation or scale"""
-        frame = Frame(parent=Frame.global_frame()).translate(x=tx, y=ty, z=tz)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(
+            x=tx, y=ty, z=tz
+        )
 
         assert_allclose(
             frame.combined_rotation.as_matrix(),
@@ -470,7 +466,7 @@ class TestRotationProperties:
     def test_rotation_composition(self, angle1, angle2):
         """Multiple rotations should compose"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .rotate_euler(z=angle1, degrees=True)
             .rotate_euler(z=angle2, degrees=True)
         )
@@ -488,7 +484,7 @@ class TestRotationProperties:
     def test_rotation_inverse(self, angle):
         """Rotation followed by inverse rotation should be identity"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .rotate_euler(z=angle, degrees=True)
             .rotate_euler(z=-angle, degrees=True)
         )
@@ -505,7 +501,7 @@ class TestScalingProperties:
     @given(s1=scales, s2=scales)
     def test_uniform_scale_composition(self, s1, s2):
         """Multiple uniform scales should multiply"""
-        frame = Frame(parent=Frame.global_frame()).scale(s1).scale(s2)
+        frame = Frame(parent=Frame(parent=None, name="global")).scale(s1).scale(s2)
 
         expected = s1 * s2
         assert_allclose(
@@ -523,7 +519,7 @@ class TestScalingProperties:
     def test_non_uniform_scale_composition(self, sx1, sy1, sz1, sx2, sy2, sz2):
         """Multiple non-uniform scales should multiply component-wise"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .scale((sx1, sy1, sz1))
             .scale((sx2, sy2, sz2))
         )
@@ -534,7 +530,11 @@ class TestScalingProperties:
     @given(scale=scales)
     def test_scale_inverse(self, scale):
         """Scale followed by inverse scale should be identity"""
-        frame = Frame(parent=Frame.global_frame()).scale(scale).scale(1.0 / scale)
+        frame = (
+            Frame(parent=Frame(parent=None, name="global"))
+            .scale(scale)
+            .scale(1.0 / scale)
+        )
 
         assert_allclose(np.diagonal(frame.combined_scale)[:3], [1, 1, 1], atol=1e-10)
 
@@ -544,7 +544,7 @@ class TestCacheInvalidation:
     @given(tx=small_coords, ty=small_coords)
     def test_cache_invalidated_after_translate(self, tx, ty):
         """Cache should be invalidated after translation"""
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         _ = frame.transform_to_parent
         assert frame._cached_transform is not None
@@ -555,7 +555,7 @@ class TestCacheInvalidation:
     @given(angle=angles)
     def test_cache_invalidated_after_rotate(self, angle):
         """Cache should be invalidated after rotation"""
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         _ = frame.transform_to_parent
         assert frame._cached_transform is not None
@@ -566,7 +566,7 @@ class TestCacheInvalidation:
     @given(scale=scales)
     def test_cache_invalidated_after_scale(self, scale):
         """Cache should be invalidated after scaling"""
-        frame = Frame(parent=Frame.global_frame())
+        frame = Frame(parent=Frame(parent=None, name="global"))
 
         _ = frame.transform_to_parent
         assert frame._cached_transform is not None
@@ -580,7 +580,7 @@ class TestHierarchyDepth:
     @given(depth=integers(min_value=1, max_value=10), offset=small_coords)
     def test_deep_hierarchy_accumulation(self, depth, offset):
         """Transformations should accumulate correctly through deep hierarchies"""
-        current = Frame.global_frame()
+        current = Frame(parent=None, name="global")
 
         for _ in range(depth):
             current = Frame(parent=current).translate(x=offset)
@@ -593,7 +593,7 @@ class TestHierarchyDepth:
     @given(depth=integers(min_value=1, max_value=10))
     def test_deep_hierarchy_root_finding(self, depth):
         """Root should be found correctly regardless of depth"""
-        root = Frame.create_orphan(name="root")
+        root = Frame(parent=None, name="root")
         current = root
 
         for i in range(depth):
@@ -608,7 +608,7 @@ class TestTransformationOrder:
     def test_srt_order(self, tx, angle, scale):
         """Transformations should be applied in S->R->T order"""
         frame = (
-            Frame(parent=Frame.global_frame())
+            Frame(parent=Frame(parent=None, name="global"))
             .scale(scale)
             .rotate_euler(z=angle, degrees=True)
             .translate(x=tx)
@@ -629,7 +629,7 @@ class TestTransformCopies:
     @given(tx=small_coords)
     def test_transform_to_parent_returns_copy(self, tx):
         """transform_to_parent should return a copy, not a reference"""
-        frame = Frame(parent=Frame.global_frame()).translate(x=tx)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=tx)
 
         t1 = frame.transform_to_parent
         t2 = frame.transform_to_parent
@@ -640,7 +640,7 @@ class TestTransformCopies:
     @given(tx=small_coords)
     def test_transform_to_global_returns_copy(self, tx):
         """transform_to_global should return a copy, not a reference"""
-        frame = Frame(parent=Frame.global_frame()).translate(x=tx)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=tx)
 
         t1 = frame.transform_to_global
         t2 = frame.transform_to_global
@@ -651,76 +651,65 @@ class TestTransformCopies:
 
 @pytest.mark.unit
 class TestDeepCopy:
-    def test_deepcopy_points_preserves_global_frame_singleton(self):
-        """Deepcopy of Points should preserve global frame singleton"""
+    def test_deepcopy_points_with_shared_frame(self):
+        """Deepcopy of Points should share the same copied frame"""
         from copy import deepcopy
 
-        points = [
-            Frame.global_frame().create_point(x=i, y=0, z=0) for i in range(10)
-        ]
+        root = Frame(parent=None, name="root")
+        points = [root.point(x=i, y=0, z=0) for i in range(10)]
 
         copied_points = deepcopy(points)
 
-        for point in copied_points:
-            assert point.frame is Frame.global_frame()
+        # All copied points should share the same (copied) frame
+        assert all(p.frame is copied_points[0].frame for p in copied_points)
+        # But the copied frame should be different from the original
+        assert copied_points[0].frame is not root
 
-    def test_deepcopy_vectors_preserves_global_frame_singleton(self):
-        """Deepcopy of Vectors should preserve global frame singleton"""
+    def test_deepcopy_vectors_with_shared_frame(self):
+        """Deepcopy of Vectors should share the same copied frame"""
         from copy import deepcopy
 
-        vectors = [
-            Frame.global_frame().create_vector(x=i, y=1, z=0) for i in range(5)
-        ]
+        root = Frame(parent=None, name="root")
+        vectors = [root.vector(x=i, y=1, z=0) for i in range(5)]
 
         copied_vectors = deepcopy(vectors)
 
-        for vector in copied_vectors:
-            assert vector.frame is Frame.global_frame()
+        # All copied vectors should share the same (copied) frame
+        assert all(v.frame is copied_vectors[0].frame for v in copied_vectors)
+        # But the copied frame should be different from the original
+        assert copied_vectors[0].frame is not root
 
     def test_deepcopy_frame_creates_independent_copy(self):
         """Deepcopy of a regular frame should create independent copy"""
         from copy import deepcopy
 
-        frame = Frame(parent=Frame.global_frame(), name="test").translate(x=1, y=2)
+        root = Frame(parent=None, name="root")
+        frame = Frame(parent=root, name="test").translate(x=1, y=2)
 
         copied_frame = deepcopy(frame)
 
         assert copied_frame is not frame
-        assert copied_frame.parent is Frame.global_frame()
-        assert_allclose(
-            copied_frame.combined_translation, frame.combined_translation
-        )
+        assert copied_frame.parent is not root
+        assert_allclose(copied_frame.combined_translation, frame.combined_translation)
 
         frame.translate(x=5)
         assert not np.allclose(
             copied_frame.combined_translation, frame.combined_translation
         )
 
-    def test_deepcopy_orphan_frame_preserves_singleton(self):
-        """Deepcopy of an orphan frame should preserve singleton (orphans are frozen)"""
-        from copy import deepcopy
-
-        orphan = Frame.create_orphan(name="orphan")
-
-        copied_orphan = deepcopy(orphan)
-
-        assert copied_orphan is orphan
-        assert copied_orphan is not Frame.global_frame()
-        assert copied_orphan.parent is None
-        assert copied_orphan.name == "orphan"
-
     def test_deepcopy_frame_hierarchy(self):
         """Deepcopy of frame hierarchy should preserve structure"""
         from copy import deepcopy
 
-        parent = Frame(parent=Frame.global_frame(), name="parent").translate(x=1)
+        root = Frame(parent=None, name="root")
+        parent = Frame(parent=root, name="parent").translate(x=1)
         child = Frame(parent=parent, name="child").translate(y=2)
 
         copied_child = deepcopy(child)
 
         assert copied_child is not child
         assert copied_child.parent is not parent
-        assert copied_child.parent.parent is Frame.global_frame()
+        assert copied_child.parent.parent.name == "root"
 
         expected_global = np.eye(4)
         expected_global[:3, 3] = [1, 2, 0]
@@ -730,8 +719,9 @@ class TestDeepCopy:
         """Deepcopy should preserve all transformations"""
         from copy import deepcopy
 
+        root = Frame(parent=None, name="root")
         frame = (
-            Frame(parent=Frame.global_frame(), name="test")
+            Frame(parent=root, name="test")
             .translate(x=1, y=2, z=3)
             .rotate_euler(z=45, degrees=True)
             .scale(2.0)
@@ -750,32 +740,17 @@ class TestDeepCopy:
             frame.combined_rotation.as_matrix(),
             atol=1e-10,
         )
-        assert_allclose(
-            copied_frame.combined_scale, frame.combined_scale, atol=1e-10
-        )
+        assert_allclose(copied_frame.combined_scale, frame.combined_scale, atol=1e-10)
 
     def test_deepcopy_frozen_state_preserved(self):
         """Deepcopy should preserve frozen state"""
         from copy import deepcopy
 
-        orphan = Frame.create_orphan(name="frozen_orphan")
+        root = Frame(parent=None, name="frozen_root")
+        root.freeze()
 
-        copied_orphan = deepcopy(orphan)
+        copied_root = deepcopy(root)
 
-        assert copied_orphan._is_frozen is True
+        assert copied_root._is_frozen is True
         with pytest.raises(RuntimeError, match="Can not modify frozen frame"):
-            copied_orphan.translate(x=1)
-
-    def test_deepcopy_points_with_orphan_frame_preserves_singleton(self):
-        """Deepcopy of Points with orphan frame should preserve orphan singleton"""
-        from copy import deepcopy
-
-        orphan = Frame.create_orphan(name="robot")
-        points = [orphan.create_point(x=i, y=0, z=0) for i in range(5)]
-
-        copied_points = deepcopy(points)
-
-        for point in copied_points:
-            assert point.frame is orphan
-
-        assert all(p.frame is copied_points[0].frame for p in copied_points)
+            copied_root.translate(x=1)

@@ -7,10 +7,9 @@ with parent-child relationships, and transformations are cached for performance.
 
 from __future__ import annotations
 
-import copy
 from functools import reduce, wraps
 from operator import add, mul
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Literal, Self, overload
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -20,8 +19,6 @@ from hazy.primitives import Point, Vector
 
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
-
-    # from laser_cross_calibration.coordinate_system.primitives import Point, Vector
 
 
 def invalidate_transform_cache(method):
@@ -66,29 +63,17 @@ class Frame:
         self,
         parent: Frame | None = None,
         name: str | None = None,
-        *,
-        _allow_orphan: bool = False,
     ):
         """Initialize a new reference frame.
 
         Args:
-            parent: Parent frame (required unless using internal _allow_orphan flag)
+            parent: Parent frame in hierarchy (None for root frames)
             name: Frame identifier (auto-generated if not provided)
-            _allow_orphan: Internal flag to allow creation without parent
 
-        Raises:
-            TypeError: If parent is None and not using class methods
+        Examples:
+            >>> root = Frame(name="world")
+            >>> child = Frame(parent=root, name="camera")
         """
-        if hasattr(self, "_parent"):
-            return
-
-        if parent is None and not _allow_orphan:
-            raise TypeError(
-                "Frame() missing required argument: 'parent'. "
-                "Use Frame.global_frame() to get the global frame, "
-                "or Frame.create_orphan() to create a frame without parent."
-            )
-
         self._parent: Frame | None = parent
         self._name = name or f"Frame-{id(self)}"
 
@@ -101,38 +86,16 @@ class Frame:
 
         self._is_frozen = False
 
-    @classmethod
-    def create_orphan(cls, name: str | None = None) -> Frame:
-        instance = cls(parent=None, name=name, _allow_orphan=True)
-        instance.freeze()
-        return instance
-
-    def __deepcopy__(self, memo):
-        """Custom deepcopy to preserve singletons (global frame and orphans).
-
-        Orphan frames are treated as singletons because:
-        - They are frozen (immutable)
-        - Their name is their identity
-        - A copy would be functionally identical but break identity checks
-        """
-        if self is Frame.global_frame() or self.parent is None:
-            return self
-
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-
-        for k, v in self.__dict__.items():
-            setattr(result, k, copy.deepcopy(v, memo))
-
-        return result
-
     @property
     def parent(self) -> Frame | None:
+        """Reference to the parent of this frame.
+        If this is a root frame parent is None.
+        """
         return self._parent
 
     @property
     def name(self) -> str:
+        """Name of this frame."""
         return self._name
 
     @property
@@ -194,11 +157,85 @@ class Frame:
         """
         return np.linalg.inv(self.transform_to_parent)
 
+    @property
+    def transform_to_global(self) -> NDArray[np.floating]:
+        """4x4 transformation matrix from this frame to global frame.
+
+        Recursively composes transformations through parent hierarchy.
+        Results are cached for performance.
+
+        Returns:
+            4x4 transformation matrix
+        """
+        if self._cached_transform_global is not None:
+            return self._cached_transform_global.copy()
+
+        if self.parent is None:
+            self._cached_transform_global = np.eye(4, dtype=float)
+        else:
+            self._cached_transform_global = (
+                self.parent.transform_to_global @ self.transform_to_parent
+            )
+        return self._cached_transform_global
+
+    @property
+    def transform_from_global(self) -> NDArray[np.floating]:
+        """4x4 transformation matrix from global frame to this frame.
+
+        Returns:
+            Inverse of transform_to_global
+        """
+        return np.linalg.inv(self.transform_to_global)
+
+    @property
+    def x_axis(self) -> Vector:
+        """Unit vector along the x-axis in this frame."""
+        return Vector(x=1.0, y=0.0, z=0.0, frame=self)
+
+    @property
+    def x_axis_global(self) -> Vector:
+        """Unit vector along the x-axis transformed to global frame."""
+        return self.x_axis.to_frame(target_frame=self.root)
+
+    @property
+    def y_axis(self) -> Vector:
+        """Unit vector along the y-axis in this frame."""
+        return Vector(x=0.0, y=1.0, z=0.0, frame=self)
+
+    @property
+    def y_axis_global(self) -> Vector:
+        """Unit vector along the y-axis transformed to global frame."""
+        return self.y_axis.to_frame(target_frame=self.root)
+
+    @property
+    def z_axis(self) -> Vector:
+        """Unit vector along the z-axis in this frame."""
+        return Vector(x=0.0, y=0.0, z=1.0, frame=self)
+
+    @property
+    def z_axis_global(self) -> Vector:
+        """Unit vector along the z-axis transformed to global frame."""
+        return self.z_axis.to_frame(target_frame=self.root)
+
+    @property
+    def origin(self) -> Point:
+        """Origin point (0, 0, 0) in this frame."""
+        return Point(x=0.0, y=0.0, z=0.0, frame=self)
+
+    @property
+    def origin_global(self) -> Point:
+        """Origin point transformed to global frame."""
+        return self.origin.to_frame(target_frame=self.root)
+
     def freeze(self) -> Self:
         """Freeze frame to prevent further modifications.
 
         Returns:
             Self for method chaining
+
+        Examples:
+            >>> frame = Frame().translate(x=1.0).freeze()
+            >>> frame.translate(x=2.0)  # Raises RuntimeError
         """
         self._is_frozen = True
         return self
@@ -233,13 +270,44 @@ class Frame:
 
         Returns:
             Self for method chaining
+
+        Examples:
+            >>> frame = Frame()
+            >>> frame.rotate_euler(z=90, degrees=True)
+            >>> frame.rotate_euler(y=np.pi) # default radians
+            >>> frame.rotate_euler(x=30, y=45, z=60, seq="zyx", degrees=True)
         """
         R = Rotation.from_euler(seq=seq, angles=(x, y, z), degrees=degrees)
         self._rotations.append(R)
         return self
 
     @invalidate_transform_cache
-    def rotate(self, rotation) -> Self:
+    def rotate_quaternion(
+        self, quaternion: ArrayLike, *, scalar_first: bool = False
+    ) -> Self:
+        """Add quaternion rotation to frame.
+
+        Args:
+            quaternion: (4,) or (N, 4) array describing rotation with quaternion
+            scalar_first: Whether the scalar is the first or last element of the
+                quaternion
+
+        Returns:
+            Self for method chaining
+
+        Examples:
+            >>> frame = Frame()
+            >>> frame.rotate_quaternion([0, 0, 0, 1])  # Identity, scalar last
+            >>> frame.rotate_quaternion(
+                    [1, 0, 0, 0], scalar_first=True
+                )  # Identity, scalar first
+        """
+        R = Rotation.from_quaternion(quaternion, scalar_first=scalar_first)
+        self._rotations.append(R)
+        return self
+
+    @invalidate_transform_cache
+    def rotate(self, rotation: ArrayLike) -> Self:
         """Add rotation matrix to frame.
 
         Args:
@@ -247,13 +315,18 @@ class Frame:
 
         Returns:
             Self for method chaining
+
+        Examples:
+            >>> frame = Frame()
+            >>> R = np.eye(3)  # Identity rotation
+            >>> frame.rotate(R)
         """
         R = Rotation.from_matrix(rotation)
         self._rotations.append(R)
         return self
 
     @invalidate_transform_cache
-    def translate(self, *, x=0.0, y=0.0, z=0.0) -> Self:
+    def translate(self, *, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self:
         """Add translation to frame.
 
         Args:
@@ -263,77 +336,47 @@ class Frame:
 
         Returns:
             Self for method chaining
+
+        Examples:
+            >>> frame = Frame()
+            >>> frame.translate(x=1.0, y=2.0, z=3.0)
         """
         translation = np.array([x, y, z], dtype=float)
         self._translations.append(translation)
         return self
 
+    @overload
+    def scale(self, x: float) -> Self: ...
+
+    @overload
+    def scale(self, x: float, y: float, z: float) -> Self: ...
+
     @invalidate_transform_cache
-    def scale(self, scale: float | tuple[float, float, float] | ArrayLike) -> Self:
+    def scale(self, x: float, y: float | None = None, z: float | None = None) -> Self:
         """Add scaling to frame.
 
         Args:
-            scale: Uniform scale factor or (sx, sy, sz) tuple
+            x: Uniform scale factor or x-axis scale
+            y: Y-axis scale (if provided, x/y/z are per-axis scales)
+            z: Z-axis scale (if provided, x/y/z are per-axis scales)
 
         Returns:
             Self for method chaining
 
-        Raises:
-            ValueError: If tuple doesn't have exactly 3 elements
+        Examples:
+            >>> frame = Frame()
+            >>> frame.scale(2.0)  # Uniform scaling
+            >>> frame.scale(1.0, 2.0, 3.0)  # Per-axis scaling
         """
-        if isinstance(scale, float | int):
-            scaling = np.ones(3, dtype=float) * scale
+        if y is None and z is None:
+            scaling = np.ones(3, dtype=float) * x
+        elif y is not None and z is not None:
+            scaling = np.array([x, y, z], dtype=float)
         else:
-            scaling = np.asarray(scale, dtype=float).flatten()
-            if scaling.shape != (3,):
-                raise ValueError()
+            raise ValueError("Provide either uniform scale or (x, y, z)")
 
         self._scalings.append(scaling)
         return self
-
-    _global_frame = None
-
-    @classmethod
-    def global_frame(cls) -> Frame:
-        """Get or create the singleton global reference frame.
-
-        Returns:
-            Global frame instance
-        """
-        if cls._global_frame is None:
-            cls._global_frame = Frame(parent=None, name="global", _allow_orphan=True)
-            cls._global_frame.freeze()
-        return cls._global_frame
-
-    @property
-    def transform_to_global(self) -> NDArray[np.floating]:
-        """4x4 transformation matrix from this frame to global frame.
-
-        Recursively composes transformations through parent hierarchy.
-        Results are cached for performance.
-
-        Returns:
-            4x4 transformation matrix
-        """
-        if self._cached_transform_global is not None:
-            return self._cached_transform_global.copy()
-
-        if self.parent is None:
-            self._cached_transform_global = np.eye(4, dtype=float)
-        else:
-            self._cached_transform_global = (
-                self.parent.transform_to_global @ self.transform_to_parent
-            )
-        return self._cached_transform_global
-
-    @property
-    def transform_from_global(self) -> NDArray[np.floating]:
-        """4x4 transformation matrix from global frame to this frame.
-
-        Returns:
-            Inverse of transform_to_global
-        """
-        return np.linalg.inv(self.transform_to_global)
 
     def transform_to(self, target: Frame) -> NDArray[np.floating]:
         """Compute transformation matrix from this frame to target frame.
@@ -346,6 +389,11 @@ class Frame:
 
         Raises:
             RuntimeError: If frames belong to different hierarchies (different roots)
+
+        Examples:
+            >>> world = Frame.make_root("world")
+            >>> camera = world.make_child("camera").translate(z=5.0)
+            >>> T = camera.transform_to(world)
         """
         if self == target:
             return np.eye(4)
@@ -359,47 +407,86 @@ class Frame:
 
         return target.transform_from_global @ self.transform_to_global
 
-    @property
-    def unit_x(self) -> Vector:
-        return Vector(x=1.0, y=0.0, z=0.0, frame=self)
+    @overload
+    def vector(self, x: float, y: float, z: float) -> Vector: ...
 
-    @property
-    def unit_x_global(self) -> Vector:
-        return self.unit_x.to_frame(target_frame=Frame.global_frame())
+    @overload
+    def vector(self, x: ArrayLike) -> Vector: ...
 
-    @property
-    def unit_y(self) -> Vector:
-        return Vector(x=0.0, y=1.0, z=0.0, frame=self)
+    def vector(
+        self, x: float | ArrayLike, y: float | None = None, z: float | None = None
+    ) -> Vector:
+        """Create vector in this frame.
 
-    @property
-    def unit_y_global(self) -> Vector:
-        return self.unit_y.to_frame(target_frame=Frame.global_frame())
+        Args:
+            x: X-coordinate or array-like [x, y, z]
+            y: Y-coordinate (required if x is scalar)
+            z: Z-coordinate (required if x is scalar)
 
-    @property
-    def unit_z(self) -> Vector:
-        return Vector(x=0.0, y=0.0, z=1.0, frame=self)
+        Returns:
+            Vector in this frame
 
-    @property
-    def unit_z_global(self) -> Vector:
-        return self.unit_z.to_frame(target_frame=Frame.global_frame())
+        Examples:
+            >>> frame.vector(1.0, 2.0, 3.0)
+            >>> frame.vector([1, 2, 3])
+            >>> frame.vector(np.array([1, 2, 3]))
+        """
+        if y is None and z is None:
+            return Vector.from_array(x, frame=self)
+        elif y is not None and z is not None:
+            return Vector(x=x, y=y, z=z, frame=self)
+        else:
+            raise ValueError("Provide either (x, y, z) or single array-like")
 
-    @property
-    def origin(self) -> Point:
-        return Point(x=0.0, y=0.0, z=0.0, frame=self)
+    @overload
+    def point(self, x: float, y: float, z: float) -> Point: ...
 
-    @property
-    def origin_global(self):
-        return self.origin.to_frame(target_frame=Frame.global_frame())
+    @overload
+    def point(self, x: ArrayLike) -> Point: ...
 
-    def create_vector(self, x: float, y: float, z: float) -> Vector:
-        return Vector(x=x, y=y, z=z, frame=self)
+    def point(
+        self, x: float | ArrayLike, y: float | None = None, z: float | None = None
+    ) -> Point:
+        """Create point in this frame.
 
-    def create_point(self, x: float, y: float, z: float) -> Point:
-        return Point(x=x, y=y, z=z, frame=self)
+        Args:
+            x: X-coordinate or array-like [x, y, z]
+            y: Y-coordinate (required if x is scalar)
+            z: Z-coordinate (required if x is scalar)
 
-    def batch_transform_global(
+        Returns:
+            Point in this frame
+
+        Examples:
+            >>> frame.point(1.0, 2.0, 3.0)
+            >>> frame.point([1, 2, 3])
+            >>> frame.point(np.array([1, 2, 3]))
+        """
+        if y is None and z is None:
+            return Point.from_array(x, frame=self)
+        elif y is not None and z is not None:
+            return Point(x=x, y=y, z=z, frame=self)
+        else:
+            raise ValueError("Provide either (x, y, z) or single array-like")
+
+    def batch_transform_points_global(
         self, points: NDArray[np.floating]
     ) -> NDArray[np.floating]:
+        """Batch transform an array of points from this coordinate system to global.
+
+        Homogeneous coordinate (w=1) will be added automatically.
+
+        Args:
+            points: Array of 3D points, will be reshaped to (N, 3)
+
+        Returns:
+            Points transformed to global space
+
+        Examples:
+            >>> frame = Frame().translate(x=1.0)
+            >>> points = np.array([[0, 0, 0], [1, 0, 0]])
+            >>> frame.batch_transform_points_global(points)
+        """
         points = np.asarray(points)
         original_shape = points.shape
         points_homogenous = np.hstack(
@@ -407,6 +494,63 @@ class Frame:
         )
         transformed = points_homogenous @ self.transform_to_global.T
         return transformed[:, :3].reshape(original_shape)
+
+    def batch_transform_vectors_global(
+        self, vectors: NDArray[np.floating]
+    ) -> NDArray[np.floating]:
+        """Batch transform an array of vectors from this coordinate system to global.
+
+        Homogeneous coordinate (w=0) will be added automatically.
+
+        Args:
+            vectors: Array of 3D vectors, will be reshaped to (N, 3)
+
+        Returns:
+            Vectors transformed to global space
+
+        Examples:
+            >>> frame = Frame().translate(x=1.0)
+            >>> vectors = np.array([[1, 0, 0], [0, 1, 0]])
+            >>> frame.batch_transform_vectors_global(vectors)
+        """
+        vectors = np.asarray(vectors)
+        original_shape = vectors.shape
+        vectors_homogenous = np.hstack(
+            [vectors.reshape(-1, 3), np.zeros((vectors.size // 3, 1))]
+        )
+        transformed = vectors_homogenous @ self.transform_to_global.T
+        return transformed[:, :3].reshape(original_shape)
+
+    @classmethod
+    def make_root(cls, name: str | None = None) -> Frame:
+        """Create a root frame (frame without parent).
+
+        Args:
+            name: Optional name for the root frame
+
+        Returns:
+            New root frame
+
+        Example:
+            >>> root = Frame.make_root(name="world")
+            >>> robot = root.make_child(name="robot")
+        """
+        return cls(parent=None, name=name)
+
+    def make_child(self, name: str | None = None) -> Frame:
+        """Creates a frame with this frame as its parent.
+
+        Args:
+            name: Optional name for the child frame
+
+        Returns:
+            New child frame
+
+        Example:
+            >>> root = Frame.make_root(name="world")
+            >>> child = root.make_child(name="child")
+        """
+        return Frame(parent=self, name=name)
 
     def __repr__(self) -> str:
         parent_name = self.parent.name if self.parent else "None"
