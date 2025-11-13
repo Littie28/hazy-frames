@@ -55,15 +55,15 @@ uv sync --group dev
 from hazy import Frame, Point, Vector
 
 # Create a frame hierarchy
-world = Frame.get_global()
-robot = Frame(parent=world, name="robot")
+world = Frame.make_root("world")
+robot = world.make_child(name="robot")
 robot.translate(x=5, y=0, z=0).rotate_euler(z=90, degrees=True)
 
 camera = robot.make_child(name="camera")  # different initialization methods
 camera.translate(x=0, y=0, z=1)
 
 # Create frame-aware primitives
-point_in_camera = Point(1, 0, 0, frame=camera)
+point_in_camera = camera.point(1, 0, 0)
 
 # Transform between frames
 point_in_world = point_in_camera.to_frame(world)
