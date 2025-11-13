@@ -13,7 +13,7 @@ from hazy.primitives import Point, Vector
 class TestMultiFrameTransformations:
     def test_point_transformation_through_hierarchy(self):
         """Test point transformation through multi-level frame hierarchy"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         robot_base = Frame(parent=global_frame, name="robot_base").translate(
             x=1, y=0, z=0
         )
@@ -36,7 +36,7 @@ class TestMultiFrameTransformations:
 
     def test_vector_transformation_preserves_direction(self):
         """Test that vectors transform correctly through rotated frames"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         rotated = Frame(parent=global_frame, name="rotated").rotate_euler(
             z=90, degrees=True
         )
@@ -48,7 +48,7 @@ class TestMultiFrameTransformations:
 
     def test_point_arithmetic_across_frame_hierarchy(self):
         """Test point arithmetic when transforming between frames"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame_a = Frame(parent=global_frame, name="frame_a").translate(x=1)
         frame_b = Frame(parent=global_frame, name="frame_b").translate(y=1)
 
@@ -68,7 +68,7 @@ class TestMultiFrameTransformations:
 class TestComplexTransformations:
     def test_combined_rotation_translation_scale(self):
         """Test complex transformation combining all types"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         complex_frame = (
             Frame(parent=global_frame, name="complex")
             .scale(2.0)
@@ -89,7 +89,7 @@ class TestComplexTransformations:
 
     def test_deep_hierarchy_accumulation(self):
         """Test transformation accumulation through deep hierarchy"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
 
         current_frame = global_frame
         for i in range(5):
@@ -104,7 +104,7 @@ class TestComplexTransformations:
 
     def test_non_uniform_scale_with_rotation(self):
         """Test that non-uniform scaling works correctly with rotation"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame = (
             Frame(parent=global_frame, name="test")
             .scale((2, 3, 1))
@@ -121,7 +121,7 @@ class TestComplexTransformations:
 class TestRobotKinematics:
     def test_simple_robot_arm_forward_kinematics(self):
         """Simulate simple 2-link robot arm forward kinematics"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
 
         base = Frame(parent=global_frame, name="base")
 
@@ -148,7 +148,7 @@ class TestRobotKinematics:
 
     def test_camera_calibration_scenario(self):
         """Simulate camera mounted on robot scenario"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
 
         robot_base = Frame(parent=global_frame, name="robot").translate(x=0.5, y=0, z=0)
 
@@ -176,7 +176,7 @@ class TestRobotKinematics:
 class TestBatchOperations:
     def test_batch_transform_with_frame_hierarchy(self):
         """Test batch transformation through frame hierarchy"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame = (
             Frame(parent=global_frame, name="test")
             .translate(x=1, y=2, z=3)
@@ -193,7 +193,7 @@ class TestBatchOperations:
 
     def test_point_list_transformation(self):
         """Test transforming multiple Point objects"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         source_frame = Frame(parent=global_frame, name="source").translate(x=1)
         target_frame = Frame(parent=global_frame, name="target").translate(y=1)
 
@@ -214,7 +214,7 @@ class TestBatchOperations:
 class TestFrameFreezingInHierarchy:
     def test_freeze_propagation_through_children(self):
         """Test that freezing parent doesn't affect child creation"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         parent = Frame(parent=global_frame, name="parent").translate(x=1)
         parent.freeze()
 
@@ -227,7 +227,7 @@ class TestFrameFreezingInHierarchy:
 
     def test_frozen_frame_prevents_modifications(self):
         """Test that frozen frames in hierarchy still transform correctly"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frozen = Frame(parent=global_frame, name="frozen").translate(x=1).freeze()
 
         child = Frame(parent=frozen, name="child").translate(y=1)
@@ -242,7 +242,7 @@ class TestFrameFreezingInHierarchy:
 class TestVectorOperations:
     def test_cross_product_in_different_frames(self):
         """Test cross product after frame transformations"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         frame = Frame(parent=global_frame, name="test").rotate_euler(z=90, degrees=True)
 
         v1_local = Vector(1, 0, 0, frame=frame)
@@ -257,7 +257,7 @@ class TestVectorOperations:
 
     def test_vector_magnitude_invariant_under_translation(self):
         """Test that vector magnitude is invariant under translation"""
-        global_frame = Frame.global_frame()
+        global_frame = Frame(parent=None, name="global")
         translated = Frame(parent=global_frame, name="translated").translate(
             x=100, y=200, z=300
         )
@@ -269,74 +269,11 @@ class TestVectorOperations:
         assert abs(vector_local.magnitude - 5.0) < VVSMALL
 
 
-@pytest.mark.integration
-class TestOrphanFrames:
-    def test_orphan_frame_is_own_global(self):
-        """Test that orphan frames define their own global coordinate system"""
-        orphan = Frame.create_orphan(name="orphan")
-
-        point = Point(0, 0, 0, frame=orphan)
-        point_global = point.to_global()
-
-        assert_allclose(point_global, [0, 0, 0], atol=VVSMALL)
-        assert point_global.frame is orphan
-
-    def test_orphan_frame_transform_to_global_is_identity(self):
-        """Test that orphan frames have identity transform to global"""
-        orphan = Frame.create_orphan(name="orphan")
-
-        assert_allclose(orphan.transform_to_global, np.eye(4), atol=VVSMALL)
-
-    def test_transform_between_orphan_frames_raises(self):
-        """Test that transformation between independent orphan frames raises error"""
-        orphan1 = Frame.create_orphan(name="orphan1")
-        orphan2 = Frame.create_orphan(name="orphan2")
-
-        point = Point(1, 0, 0, frame=orphan1)
-
-        with pytest.raises(RuntimeError, match="different hierarchies"):
-            point.to_frame(orphan2)
-
-    def test_transform_within_orphan_hierarchy_allowed(self):
-        """Test that transformation within same orphan hierarchy works"""
-        orphan = Frame.create_orphan(name="orphan")
-        child1 = Frame(parent=orphan, name="child1").translate(x=1)
-        child2 = Frame(parent=orphan, name="child2").rotate_euler(z=90, degrees=True)
-
-        point = Point(1, 0, 0, frame=child1)
-        point_in_child2 = point.to_frame(child2)
-
-        expected_x = 0
-        expected_y = -2
-        expected_z = 0
-
-        assert_allclose(
-            point_in_child2, [expected_x, expected_y, expected_z], atol=VVSMALL
-        )
-
-    def test_orphan_frame_independent_hierarchies(self):
-        """Test that different orphan frame hierarchies are independent"""
-        orphan1 = Frame.create_orphan(name="orphan1")
-        child1 = Frame(parent=orphan1, name="child1").translate(x=1)
-
-        orphan2 = Frame.create_orphan(name="orphan2")
-        child2 = Frame(parent=orphan2, name="child2").translate(x=2)
-
-        point1 = Point(0, 0, 0, frame=child1)
-        point2 = Point(0, 0, 0, frame=child2)
-
-        assert_allclose(point1.to_global(), [1, 0, 0], atol=VVSMALL)
-        assert_allclose(point2.to_global(), [2, 0, 0], atol=VVSMALL)
-
-        assert point1.to_global().frame is orphan1
-        assert point2.to_global().frame is orphan2
-
-
 class TestBuildinIntegration:
     """Test operations between Python native types and Vector/Point."""
 
     def test_add_scalar_point_raises(self):
-        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+        point = Frame(parent=None, name="global").point(0.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
@@ -352,7 +289,7 @@ class TestBuildinIntegration:
             point = point + z
 
     def test_add_scalar_vector_raises(self):
-        vector = Frame.global_frame().vector(1.0, 0.0, 0.0)
+        vector = Frame(parent=None, name="global").vector(1.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
@@ -368,7 +305,7 @@ class TestBuildinIntegration:
             vector = vector + z
 
     def test_subtract_scalar_point(self):
-        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+        point = Frame(parent=None, name="global").point(0.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
@@ -384,7 +321,7 @@ class TestBuildinIntegration:
             point = point - z
 
     def test_subtract_scalar_vector(self):
-        vector = Frame.global_frame().vector(1.0, 0.0, 0.0)
+        vector = Frame(parent=None, name="global").vector(1.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
@@ -401,42 +338,44 @@ class TestBuildinIntegration:
 
     def test_multiply_scalar_point(self):
         # integer
-        point = Frame.global_frame().point(1.0, 1.0, 1.0)
-        point = point * 5
-        expected = Frame.global_frame().point(5.0, 5.0, 5.0)
-        assert isinstance(point, Point)
-        assert_allclose(point, expected)
+        point = Frame(parent=None, name="global").point(1.0, 1.0, 1.0)
+        with pytest.raises(
+            TypeError, match="Scalar multiplication of Point is undefined"
+        ):
+            point = point * 5
 
         # float
-        point = Frame.global_frame().point(1.0, 1.0, 1.0)
-        point = point * 5.0
-        expected = Frame.global_frame().point(5.0, 5.0, 5.0)
-        assert isinstance(point, Point)
-        assert_allclose(point, expected)
+        point = Frame(parent=None, name="global").point(1.0, 1.0, 1.0)
+        with pytest.raises(
+            TypeError, match="Scalar multiplication of Point is undefined"
+        ):
+            point = point * 5.0
 
         # complex
-        point = Frame.global_frame().point(1.0, 1.0, 1.0)
-        with pytest.raises(TypeError, match="unsupported operand"):
+        point = Frame(parent=None, name="global").point(1.0, 1.0, 1.0)
+        with pytest.raises(
+            TypeError, match="Scalar multiplication of Point is undefined"
+        ):
             z = 5.0 + 1j
             point = point * z
 
     def test_multiply_scalar_vector(self):
         # integer
-        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        vector = Frame(parent=None, name="global").vector(1.0, 1.0, 1.0)
         vector = vector * 5
-        expected = Frame.global_frame().vector(5.0, 5.0, 5.0)
+        expected = Frame(parent=None, name="global").vector(5.0, 5.0, 5.0)
         assert isinstance(vector, Vector)
         assert_allclose(vector, expected)
 
         # float
-        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        vector = Frame(parent=None, name="global").vector(1.0, 1.0, 1.0)
         vector = vector * 5.0
-        expected = Frame.global_frame().vector(5.0, 5.0, 5.0)
+        expected = Frame(parent=None, name="global").vector(5.0, 5.0, 5.0)
         assert isinstance(vector, Vector)
         assert_allclose(vector, expected)
 
         # complex
-        vector = Frame.global_frame().vector(1.0, 1.0, 1.0)
+        vector = Frame(parent=None, name="global").vector(1.0, 1.0, 1.0)
         with pytest.raises(TypeError, match="unsupported operand"):
             z = 5.0 + 1j
             vector = vector * z
@@ -446,11 +385,8 @@ class TestBuildinIntegration:
 class TestNumpyIntegration:
     def test_numpy_add_point(self):
         """Test if"""
-        point = Frame.global_frame().point(0.0, 0.0, 0.0)
+        point = Frame(parent=None, name="global").point(0.0, 0.0, 0.0)
         array = np.array((1.0, 2.0, 3.0))
 
-        point = point + array
-
-        expected = Frame.global_frame().point(1.0, 2.0, 3.0)
-        assert isinstance(point, np.ndarray)
-        assert_allclose(point, expected)
+        with pytest.raises(TypeError):
+            point = point + array

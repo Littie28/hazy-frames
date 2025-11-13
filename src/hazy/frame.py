@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 from functools import reduce, wraps
 from operator import add, mul
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Literal, Self, overload
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -66,29 +66,13 @@ class Frame:
         self,
         parent: Frame | None = None,
         name: str | None = None,
-        *,
-        _allow_orphan: bool = False,
     ):
         """Initialize a new reference frame.
 
         Args:
-            parent: Parent frame (required unless using internal _allow_orphan flag)
+            parent: Parent frame in hierarchy (None for root frames)
             name: Frame identifier (auto-generated if not provided)
-            _allow_orphan: Internal flag to allow creation without parent
-
-        Raises:
-            TypeError: If parent is None and not using class methods
         """
-        if hasattr(self, "_parent"):
-            return
-
-        if parent is None and not _allow_orphan:
-            raise TypeError(
-                "Frame() missing required argument: 'parent'. "
-                "Use Frame.global_frame() to get the global frame, "
-                "or Frame.create_orphan() to create a frame without parent."
-            )
-
         self._parent: Frame | None = parent
         self._name = name or f"Frame-{id(self)}"
 
@@ -101,23 +85,8 @@ class Frame:
 
         self._is_frozen = False
 
-    @classmethod
-    def create_orphan(cls, name: str | None = None) -> Frame:
-        instance = cls(parent=None, name=name, _allow_orphan=True)
-        instance.freeze()
-        return instance
-
     def __deepcopy__(self, memo):
-        """Custom deepcopy to preserve singletons (global frame and orphans).
-
-        Orphan frames are treated as singletons because:
-        - They are frozen (immutable)
-        - Their name is their identity
-        - A copy would be functionally identical but break identity checks
-        """
-        if self is Frame.global_frame() or self.parent is None:
-            return self
-
+        """Create a deep copy of the frame and its hierarchy."""
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -291,20 +260,6 @@ class Frame:
         self._scalings.append(scaling)
         return self
 
-    _global_frame = None
-
-    @classmethod
-    def global_frame(cls) -> Frame:
-        """Get or create the singleton global reference frame.
-
-        Returns:
-            Global frame instance
-        """
-        if cls._global_frame is None:
-            cls._global_frame = Frame(parent=None, name="global", _allow_orphan=True)
-            cls._global_frame.freeze()
-        return cls._global_frame
-
     @property
     def transform_to_global(self) -> NDArray[np.floating]:
         """4x4 transformation matrix from this frame to global frame.
@@ -365,7 +320,7 @@ class Frame:
 
     @property
     def x_axis_global(self) -> Vector:
-        return self.x_axis.to_frame(target_frame=Frame.global_frame())
+        return self.x_axis.to_frame(target_frame=self.root)
 
     @property
     def y_axis(self) -> Vector:
@@ -373,7 +328,7 @@ class Frame:
 
     @property
     def y_axis_global(self) -> Vector:
-        return self.y_axis.to_frame(target_frame=Frame.global_frame())
+        return self.y_axis.to_frame(target_frame=self.root)
 
     @property
     def z_axis(self) -> Vector:
@@ -381,7 +336,7 @@ class Frame:
 
     @property
     def z_axis_global(self) -> Vector:
-        return self.z_axis.to_frame(target_frame=Frame.global_frame())
+        return self.z_axis.to_frame(target_frame=self.root)
 
     @property
     def origin(self) -> Point:
@@ -389,13 +344,69 @@ class Frame:
 
     @property
     def origin_global(self):
-        return self.origin.to_frame(target_frame=Frame.global_frame())
+        return self.origin.to_frame(target_frame=self.root)
 
-    def vector(self, x: float, y: float, z: float) -> Vector:
-        return Vector(x=x, y=y, z=z, frame=self)
+    @overload
+    def vector(self, x: float, y: float, z: float) -> Vector: ...
 
-    def point(self, x: float, y: float, z: float) -> Point:
-        return Point(x=x, y=y, z=z, frame=self)
+    @overload
+    def vector(self, x: ArrayLike) -> Vector: ...
+
+    def vector(
+        self, x: float | ArrayLike, y: float | None = None, z: float | None = None
+    ) -> Vector:
+        """Create vector in this frame.
+
+        Args:
+            x: X-coordinate or array-like [x, y, z]
+            y: Y-coordinate (required if x is scalar)
+            z: Z-coordinate (required if x is scalar)
+
+        Returns:
+            Vector in this frame
+
+        Examples:
+            >>> frame.vector(1.0, 2.0, 3.0)
+            >>> frame.vector([1, 2, 3])
+            >>> frame.vector(np.array([1, 2, 3]))
+        """
+        if y is None and z is None:
+            return Vector.from_array(x, frame=self)
+        elif y is not None and z is not None:
+            return Vector(x=x, y=y, z=z, frame=self)
+        else:
+            raise ValueError("Provide either (x, y, z) or single array-like")
+
+    @overload
+    def point(self, x: float, y: float, z: float) -> Point: ...
+
+    @overload
+    def point(self, x: ArrayLike) -> Point: ...
+
+    def point(
+        self, x: float | ArrayLike, y: float | None = None, z: float | None = None
+    ) -> Point:
+        """Create point in this frame.
+
+        Args:
+            x: X-coordinate or array-like [x, y, z]
+            y: Y-coordinate (required if x is scalar)
+            z: Z-coordinate (required if x is scalar)
+
+        Returns:
+            Point in this frame
+
+        Examples:
+            >>> frame.point(1.0, 2.0, 3.0)
+            >>> frame.point([1, 2, 3])
+            >>> frame.point(np.array([1, 2, 3]))
+        """
+        if y is None and z is None:
+            return Point.from_array(x, frame=self)
+        elif y is not None and z is not None:
+            return Point(x=x, y=y, z=z, frame=self)
+        else:
+            raise ValueError("Provide either (x, y, z) or single array-like")
 
     def batch_transform_points_global(
         self, points: NDArray[np.floating]
@@ -451,6 +462,33 @@ class Frame:
             f"transforms={transforms}{frozen})"
         )
 
+    @classmethod
+    def make_root(cls, name: str | None = None) -> Frame:
+        """Create a root frame (frame without parent).
+
+        Args:
+            name: Optional name for the root frame
+
+        Returns:
+            New root frame
+
+        Example:
+            >>> root = Frame.make_root(name="world")
+            >>> robot = root.make_child(name="robot")
+        """
+        return cls(parent=None, name=name)
+
     def make_child(self, name: str | None = None) -> Frame:
-        """Creates a frame with this frame as its parent."""
+        """Creates a frame with this frame as its parent.
+
+        Args:
+            name: Optional name for the child frame
+
+        Returns:
+            New child frame
+
+        Example:
+            >>> root = Frame.make_root(name="world")
+            >>> child = root.make_child(name="child")
+        """
         return Frame(parent=self, name=name)

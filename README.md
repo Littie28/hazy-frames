@@ -78,7 +78,8 @@ Frames represent coordinate systems and can be organized hierarchically:
 
 ```python
 # Create frames
-parent = Frame.global_frame().make_child("parent")
+root = Frame.make_root(name="root")
+parent = root.make_child("parent")
 child = Frame(parent=parent, name="child")
 
 # Apply transformations (chainable)
