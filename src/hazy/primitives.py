@@ -93,7 +93,8 @@ class GeometricPrimitive:
             value: Object to compare with
 
         Returns:
-            True if both primitives represent the same position/direction in global space
+            True if both primitives represent the same position/direction in
+            global space
 
         Raises:
             ValueError: If comparing with non-GeometricPrimitive

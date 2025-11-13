@@ -298,7 +298,9 @@ class Frame:
         Examples:
             >>> frame = Frame()
             >>> frame.rotate_quaternion([0, 0, 0, 1])  # Identity, scalar last
-            >>> frame.rotate_quaternion([1, 0, 0, 0], scalar_first=True)  # Identity, scalar first
+            >>> frame.rotate_quaternion(
+                    [1, 0, 0, 0], scalar_first=True
+                )  # Identity, scalar first
         """
         R = Rotation.from_quaternion(quaternion, scalar_first=scalar_first)
         self._rotations.append(R)

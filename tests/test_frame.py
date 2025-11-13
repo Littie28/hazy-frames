@@ -46,7 +46,6 @@ class TestFrameCreation:
         assert frame.parent is parent
 
 
-
 @pytest.mark.unit
 class TestFrameHierarchy:
     def test_hierarchical_frames(self):
@@ -109,9 +108,7 @@ class TestFrameUnitVectors:
 
     def test_frame_unit_vectors_rotation(self):
         root = Frame(parent=None, name="root")
-        parent = Frame(parent=root, name="parent").rotate_euler(
-            x=90, degrees=True
-        )
+        parent = Frame(parent=root, name="parent").rotate_euler(x=90, degrees=True)
 
         assert parent.x_axis.frame == parent
         assert_allclose(parent.x_axis, [1.0, 0.0, 0.0], atol=VVSMALL)
@@ -310,7 +307,9 @@ class TestTransformations:
         assert_allclose(product, np.eye(4), atol=1e-10)
 
     def test_transform_to_self_is_identity(self):
-        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=1).scale(2.0)
+        frame = (
+            Frame(parent=Frame(parent=None, name="global")).translate(x=1).scale(2.0)
+        )
 
         assert_allclose(frame.transform_to(frame), np.eye(4))
 
@@ -368,7 +367,9 @@ class TestBatchTransform:
         assert_allclose(transformed, expected, atol=VVSMALL)
 
     def test_batch_transform_global_with_rotation(self):
-        frame = Frame(parent=Frame(parent=None, name="global")).rotate_euler(z=90, degrees=True)
+        frame = Frame(parent=Frame(parent=None, name="global")).rotate_euler(
+            z=90, degrees=True
+        )
         points = np.array([[1, 0, 0], [0, 1, 0]])
 
         transformed = frame.batch_transform_points_global(points)
@@ -397,7 +398,9 @@ class TestTransformationInverses:
     @given(tx=small_coords, ty=small_coords, tz=small_coords, angle=angles)
     def test_transform_to_global_inverse(self, tx, ty, tz, angle):
         """transform_to_global @ transform_from_global = Identity"""
-        parent = Frame(parent=Frame(parent=None, name="global")).translate(x=tx, y=ty, z=tz)
+        parent = Frame(parent=Frame(parent=None, name="global")).translate(
+            x=tx, y=ty, z=tz
+        )
         child = Frame(parent=parent).rotate_euler(z=angle, degrees=True)
 
         product = child.transform_to_global @ child.transform_from_global
@@ -443,7 +446,9 @@ class TestTranslationProperties:
     @given(tx=small_coords, ty=small_coords, tz=small_coords)
     def test_translation_only_affects_position(self, tx, ty, tz):
         """Translation should not affect rotation or scale"""
-        frame = Frame(parent=Frame(parent=None, name="global")).translate(x=tx, y=ty, z=tz)
+        frame = Frame(parent=Frame(parent=None, name="global")).translate(
+            x=tx, y=ty, z=tz
+        )
 
         assert_allclose(
             frame.combined_rotation.as_matrix(),
@@ -525,7 +530,11 @@ class TestScalingProperties:
     @given(scale=scales)
     def test_scale_inverse(self, scale):
         """Scale followed by inverse scale should be identity"""
-        frame = Frame(parent=Frame(parent=None, name="global")).scale(scale).scale(1.0 / scale)
+        frame = (
+            Frame(parent=Frame(parent=None, name="global"))
+            .scale(scale)
+            .scale(1.0 / scale)
+        )
 
         assert_allclose(np.diagonal(frame.combined_scale)[:3], [1, 1, 1], atol=1e-10)
 

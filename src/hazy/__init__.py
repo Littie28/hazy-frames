@@ -1,7 +1,7 @@
 """Coordinate system module for frame-aware geometric transformations.
 
-This module provides hierarchical reference frames and geometric primitives (Point, Vector)
-that carry frame information and support coordinate transformations.
+This module provides hierarchical reference frames and geometric primitives
+(Point, Vector) that carry frame information and support coordinate transformations.
 
 Key classes:
     - Frame: Hierarchical reference frame with transformation tracking
@@ -21,6 +21,7 @@ Example:
     >>> p_parent = p_local.to_frame(parent)
     >>> print(p_parent)  # Point at (5, 1, 0) in parent frame
 """
+
 from __future__ import annotations
 
 from hazy.frame import Frame

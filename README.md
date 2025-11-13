@@ -145,7 +145,7 @@ Frames provide convenient accessors for unit vectors and origin:
 
 ```python
 # Unit vectors in frame's local coordinates
-x_axis = frame.x_axis 
+x_axis = frame.x_axis
 y_axis = frame.y_axis
 z_axis = frame.z_axis
 
