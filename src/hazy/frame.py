@@ -7,8 +7,7 @@ with parent-child relationships, and transformations are cached for performance.
 
 from __future__ import annotations
 
-from functools import reduce, wraps
-from operator import add, mul
+from functools import wraps
 from typing import TYPE_CHECKING, Literal, Self, overload
 
 import numpy as np
@@ -37,7 +36,11 @@ def invalidate_transform_cache(method):
     @wraps(method)
     def wrapper(self: Frame, *args, **kwargs):
         if self._is_frozen:
-            raise RuntimeError("Can not modify frozen frame.")
+            raise RuntimeError(
+                "Cannot modify frozen frame.\n"
+                "Use frame.unfreeze() to allow modifications, "
+                "or create a child frame with frame.make_child()."
+            )
         self._cached_transform = None
         self._cached_transform_global = None
         return method(self, *args, **kwargs)
@@ -113,17 +116,17 @@ class Frame:
     @property
     def combined_rotation(self) -> Rotation:
         """Combined rotation from all accumulated rotations."""
-        return reduce(mul, self._rotations)
+        return np.multiply.reduce(self._rotations)
 
     @property
     def combined_scale(self) -> NDArray[np.floating]:
         """Combined scaling matrix from all accumulated scalings."""
-        return np.diag(np.append(reduce(mul, self._scalings), 1))
+        return np.diag(np.append(np.multiply.reduce(self._scalings), 1))
 
     @property
     def combined_translation(self) -> NDArray[np.floating]:
         """Combined translation vector from all accumulated translations."""
-        return reduce(add, self._translations)
+        return np.add.reduce(self._translations)
 
     @property
     def transform_to_parent(self) -> NDArray[np.floating]:
@@ -373,7 +376,12 @@ class Frame:
         elif y is not None and z is not None:
             scaling = np.array([x, y, z], dtype=float)
         else:
-            raise ValueError("Provide either uniform scale or (x, y, z)")
+            raise ValueError(
+                "Provide either uniform scale or (x, y, z).\n"
+                "Use:\n"
+                "  frame.scale(2.0)  # Uniform scaling\n"
+                "  frame.scale(1.0, 2.0, 3.0)  # Per-axis scaling"
+            )
 
         self._scalings.append(scaling)
         return self
@@ -400,7 +408,7 @@ class Frame:
 
         if self.root is not target.root:
             raise RuntimeError(
-                f"Cannot transform between frames from different hierarchies. "
+                f"Cannot transform between frames from different hierarchies.\n"
                 f"Frame '{self.name}' has root '{self.root.name}', "
                 f"but frame '{target.name}' has root '{target.root.name}'."
             )
@@ -436,7 +444,12 @@ class Frame:
         elif y is not None and z is not None:
             return Vector(x=x, y=y, z=z, frame=self)
         else:
-            raise ValueError("Provide either (x, y, z) or single array-like")
+            raise ValueError(
+                "Provide either (x, y, z) or single array-like.\n"
+                "Use:\n"
+                "  frame.vector(1.0, 2.0, 3.0)  # Three scalars\n"
+                "  frame.vector([1, 2, 3])  # Array-like"
+            )
 
     @overload
     def point(self, x: float, y: float, z: float) -> Point: ...
@@ -467,7 +480,12 @@ class Frame:
         elif y is not None and z is not None:
             return Point(x=x, y=y, z=z, frame=self)
         else:
-            raise ValueError("Provide either (x, y, z) or single array-like")
+            raise ValueError(
+                "Provide either (x, y, z) or single array-like.\n"
+                "Use:\n"
+                "  frame.point(1.0, 2.0, 3.0)  # Three scalars\n"
+                "  frame.point([1, 2, 3])  # Array-like"
+            )
 
     def batch_transform_points_global(
         self, points: NDArray[np.floating]

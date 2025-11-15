@@ -156,7 +156,7 @@ class TestPointArithmetic:
         p1 = Point(1, 2, 3, frame=frame)
         p2 = Point(4, 5, 6, frame=frame)
 
-        with pytest.raises(TypeError, match="Can not add 2 Points"):
+        with pytest.raises(TypeError, match="Cannot add two Points"):
             p1 + p2
 
 
@@ -227,9 +227,7 @@ class TestErrorHandling:
         frame = Frame(parent=None, name="global")
         zero_vector = Vector(0, 0, 0, frame=frame)
 
-        with pytest.raises(
-            RuntimeError, match="Can not normalize vector with zero length"
-        ):
+        with pytest.raises(RuntimeError, match="Cannot normalize zero-length vector"):
             zero_vector.normalize()
 
     def test_equality_with_non_geometric_type_raises(self):
@@ -237,10 +235,10 @@ class TestErrorHandling:
         frame = Frame(parent=None, name="global")
         point = Point(1, 2, 3, frame=frame)
 
-        with pytest.raises(ValueError, match="Can not compare"):
+        with pytest.raises(ValueError, match="Cannot compare"):
             point == "not a point"
 
-        with pytest.raises(ValueError, match="Can not compare"):
+        with pytest.raises(ValueError, match="Cannot compare"):
             point == 42
 
 

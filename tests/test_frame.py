@@ -213,7 +213,7 @@ class TestFreeze:
     def test_freeze_frame_rotation(self):
         frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
-        with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
+        with pytest.raises(RuntimeError, match="Cannot modify frozen frame"):
             frame.rotate_euler(x=0.0)
         frame.unfreeze()
         frame.rotate_euler(x=0.0)
@@ -221,7 +221,7 @@ class TestFreeze:
     def test_freeze_frame_translation(self):
         frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
-        with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
+        with pytest.raises(RuntimeError, match="Cannot modify frozen frame"):
             frame.translate(x=0.0)
         frame.unfreeze()
         frame.translate(x=0.0)
@@ -229,7 +229,7 @@ class TestFreeze:
     def test_freeze_frame_scale(self):
         frame = Frame(parent=Frame(parent=None, name="global"))
         frame.freeze()
-        with pytest.raises(RuntimeError, match="Can not modify frozen frame."):
+        with pytest.raises(RuntimeError, match="Cannot modify frozen frame"):
             frame.scale(1.0)
         frame.unfreeze()
         frame.scale(1.0)
@@ -752,5 +752,5 @@ class TestDeepCopy:
         copied_root = deepcopy(root)
 
         assert copied_root._is_frozen is True
-        with pytest.raises(RuntimeError, match="Can not modify frozen frame"):
+        with pytest.raises(RuntimeError, match="Cannot modify frozen frame"):
             copied_root.translate(x=1)
