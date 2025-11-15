@@ -182,6 +182,55 @@ class GeometricPrimitive:
             f"frame={self.frame.name})"
         )
 
+    def __format__(self, format_spec: str) -> str:
+        """Format coordinates using f-string format specifiers.
+
+        Supports standard float formatting like :6.2f, :.3f, :10.4e, etc.
+        Formats all three coordinates (x, y, z) with the same spec.
+
+        Custom format flags (prefix before float spec):
+        - 'a': Array-only format - just [x, y, z] without class name or frame
+        - 'n': No-frame format - Point(x, y, z) without frame info
+        - Default: Full format with class name and frame
+
+        Args:
+            format_spec: Format specification, optionally prefixed with 'a' or 'n'
+                        Examples: '.2f', 'a.2f', 'n6.3f', 'a.3e'
+
+        Returns:
+            Formatted string in requested format
+
+        Examples:
+            >>> point = world.point(1.23456, 2.34567, 3.45678)
+            >>> f"{point:.2f}"    # 'Point(1.23, 2.35, 3.46, frame=world)'
+            >>> f"{point:n.2f}"   # 'Point(1.23, 2.35, 3.46)'
+            >>> f"{point:a.2f}"   # '[1.23, 2.35, 3.46]'
+            >>> f"{point:a6.3f}"  # '[ 1.235,  2.346,  3.457]'
+        """
+        array_only = False
+        show_frame = True
+
+        if format_spec.startswith("a"):
+            array_only = True
+            format_spec = format_spec[1:]
+        elif format_spec.startswith("n"):
+            show_frame = False
+            format_spec = format_spec[1:]
+
+        x_str = format(self.x, format_spec)
+        y_str = format(self.y, format_spec)
+        z_str = format(self.z, format_spec)
+
+        if array_only:
+            return f"[{x_str}, {y_str}, {z_str}]"
+        elif show_frame:
+            return (
+                f"{self.__class__.__qualname__}({x_str}, {y_str}, {z_str}, "
+                f"frame={self.frame.name})"
+            )
+        else:
+            return f"{self.__class__.__qualname__}({x_str}, {y_str}, {z_str})"
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy universal functions to maintain type consistency.
 
