@@ -36,7 +36,7 @@ pip install git+https://github.com/Littie28/hazy-frames.git
 Or download the wheel from [releases](https://github.com/Littie28/hazy-frames/releases/latest):
 
 ```bash
-pip install hazy_frames-0.1.0-py3-none-any.whl
+pip install hazy_frames-0.2.0-py3-none-any.whl
 ```
 
 For development:

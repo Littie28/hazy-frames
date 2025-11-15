@@ -7,7 +7,7 @@ packages = ["src/hazy"]
 
 [project]
 name = "hazy-frames"
-version = "0.1.0"
+version = "0.2.0"
 description = "Hierarchical coordinate frames - crystal clear transforms"
 readme = "README.md"
 requires-python = ">=3.12"
