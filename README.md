@@ -5,6 +5,7 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![CI](https://github.com/Littie28/hazy-frames/actions/workflows/ci.yml/badge.svg)](https://github.com/Littie28/hazy-frames/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Littie28/hazy-frames/branch/main/graph/badge.svg)](https://codecov.io/gh/Littie28/hazy-frames)
+[![Documentation Status](https://readthedocs.org/projects/hazy-frames/badge/?version=latest)](https://hazy-frames.readthedocs.io/en/latest/?badge=latest)
 
 **Hierarchical coordinate frames - crystal clear transforms**
 
@@ -59,7 +60,7 @@ world = Frame.make_root("world")
 robot = world.make_child(name="robot")
 robot.translate(x=5, y=0, z=0).rotate_euler(z=90, degrees=True)
 
-camera = robot.make_child(name="camera")  # different initialization methods
+camera = robot.make_child(name="camera")
 camera.translate(x=0, y=0, z=1)
 
 # Create frame-aware primitives
@@ -74,64 +75,14 @@ print(f"World: {point_in_world}")
 print(f"Robot: {point_in_robot}")
 ```
 
-## Key Concepts
+## Documentation
 
-Frames represent coordinate systems organized hierarchically. Points and Vectors are frame-aware primitives that can be transformed between any frames in the hierarchy.
-
-```python
-import numpy as np
-from hazy import Frame, Point, Vector
-
-# Build frame hierarchy
-root = Frame.make_root(name="root")
-child = root.make_child("child")
-child.translate(x=10, y=5, z=0).rotate_euler(z=90, degrees=True)
-
-# Create primitives (with or without numpy)
-point = child.point(1, 2, 3)
-point_from_array = Point.from_array([1, 2, 3], frame=child)
-vector = child.vector(0, 0, 1)
-
-# Geometric operations
-displacement = point_b - point_a  # Point - Point = Vector
-new_point = point + displacement  # Point + Vector = Point
-magnitude = vector.magnitude
-vector.normalize()
-
-# Transform between frames
-point_in_root = point.to_frame(root)
-point_global = point.to_global()
-
-# Batch operations with numpy
-coords = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-points = Point.list_from_array(coords, frame=child)
-transformed = child.batch_transform_points_global(coords)
-```
-
-All classes are fully documented with type hints and docstrings. Use your IDE's autocomplete or `help()` to explore the API.
-
-## Development
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src/hazy --cov-report=html
-
-# Run specific test markers
-pytest -m unit
-pytest -m integration
-
-# Watch mode for development
-pytest-watcher
-```
-## License
-
- This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Full documentation, tutorials, and API reference are available at [ReadTheDocs](https://hazy-frames.readthedocs.io/).
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
