@@ -7,8 +7,7 @@ with parent-child relationships, and transformations are cached for performance.
 
 from __future__ import annotations
 
-from functools import reduce, wraps
-from operator import add, mul
+from functools import wraps
 from typing import TYPE_CHECKING, Literal, Self, overload
 
 import numpy as np
@@ -113,17 +112,17 @@ class Frame:
     @property
     def combined_rotation(self) -> Rotation:
         """Combined rotation from all accumulated rotations."""
-        return reduce(mul, self._rotations)
+        return np.multiply.reduce(self._rotations)
 
     @property
     def combined_scale(self) -> NDArray[np.floating]:
         """Combined scaling matrix from all accumulated scalings."""
-        return np.diag(np.append(reduce(mul, self._scalings), 1))
+        return np.diag(np.append(np.multiply.reduce(self._scalings), 1))
 
     @property
     def combined_translation(self) -> NDArray[np.floating]:
         """Combined translation vector from all accumulated translations."""
-        return reduce(add, self._translations)
+        return np.add.reduce(self._translations)
 
     @property
     def transform_to_parent(self) -> NDArray[np.floating]:
