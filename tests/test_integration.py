@@ -376,7 +376,9 @@ class TestBuildinIntegration:
 
         # complex
         vector = Frame(parent=None, name="global").vector(1.0, 1.0, 1.0)
-        with pytest.raises(TypeError, match="unsupported operand"):
+        with pytest.raises(
+            TypeError, match="Complex number multiplication not supported"
+        ):
             z = 5.0 + 1j
             vector = vector * z
 

@@ -107,8 +107,13 @@ class GeometricPrimitive:
             )
         else:
             raise ValueError(
-                f"Can not compare {self} of type {self.__class__.__qualname__} "
-                f"with object of type {type(value)}"
+                f"Cannot compare {self.__class__.__qualname__} "
+                f"with {type(value).__name__}.\n"
+                "Only GeometricPrimitive instances can be compared.\n"
+                "Use:\n"
+                "  np.allclose(np.array(obj1), np.array(obj2))  # Compare coordinates\n"
+                "Or convert to array first:\n"
+                "  np.array(obj) == other_array  # Element-wise comparison"
             )
 
     def __getitem__(self, index: int) -> float:
@@ -235,7 +240,7 @@ class GeometricPrimitive:
             if isinstance(inputs[0], Vector):
                 return inputs[0].magnitude
             raise TypeError(
-                f"abs({inputs[0].__class__.__qualname__}) is geometrically undefined. "
+                f"abs({inputs[0].__class__.__qualname__}) is geometrically undefined.\n"
                 "Use np.abs(np.array(point)) for coordinate-wise absolute values."
             )
 
@@ -243,8 +248,9 @@ class GeometricPrimitive:
         # For other ufuncs, convert to array and return array result
         # This handles operations where maintaining custom type doesn't make sense
         raise TypeError(
-            f"ufunc {ufunc.__name__} not supported for {self.__class__.__qualname__}.\n"
-            f"Convert explicitly: np.{ufunc.__name__}(np.array(obj))"
+            f"ufunc '{ufunc.__name__}' not supported "
+            f"for {self.__class__.__qualname__}.\n"
+            f"Convert explicitly: np.{ufunc.__name__}(np.array(obj))."
         )
 
     def __array_function__(self, func, types, inputs, kwargs):
@@ -432,7 +438,12 @@ class GeometricPrimitive:
         """
         array = np.asarray(array).flatten()
         if array.shape != (4,):
-            raise ValueError(f"Expected 4 coordinates, got {array.shape}")
+            raise ValueError(
+                f"Expected 4 homogeneous coordinates [x, y, z, w], "
+                f"got shape {array.shape}.\n"
+                "This is an internal method - use Vector.from_array() or "
+                "Point.from_array() for Cartesian coordinates [x, y, z]."
+            )
         return cls(x=array[0], y=array[1], z=array[2], w=array[3], frame=frame)
 
 
@@ -535,7 +546,13 @@ class Vector(GeometricPrimitive):
             >>> v1 - v2  # Vector(x=2, y=1, z=0)
         """
         if isinstance(other, Point):
-            raise TypeError("Cannot subtract Point from Vector")
+            raise TypeError(
+                "Cannot subtract Point from Vector (geometrically undefined).\n"
+                "Did you mean:\n"
+                "  point - vector  # Point (subtract vector from point)\n"
+                "Or convert to arrays:\n"
+                "  Point.from_array(np.array(vector) - np.array(point), frame=frame)"
+            )
         elif isinstance(other, Vector):
             check_same_frame(self, other)
             x, y, z = np.array(self) - np.array(other)
@@ -563,12 +580,16 @@ class Vector(GeometricPrimitive):
         """
         if not np.isscalar(other):
             raise TypeError(
-                f"Can only multiply with Vector by scalar, got {type(other)}"
+                f"Can only multiply Vector by scalar, got {type(other).__name__}.\n"
+                "For element-wise or matrix operations, convert to array:\n"
+                "  np.array(vector) * other  # Element-wise multiplication\n"
+                "  Vector.from_array(np.array(vector) * other, frame=frame)"
             )
         if isinstance(other, complex | np.complexfloating):
             raise TypeError(
-                f"unsupported operand __mul__ between {self.__class__.__qualname__} "
-                "and complex numbers"
+                "Complex number multiplication not supported "
+                f"for {self.__class__.__qualname__}.\n"
+                "Use np.array(vector) for complex operations."
             )
         copy = self.copy()
         copy._homogeneous[:3] *= other
@@ -604,9 +625,14 @@ class Vector(GeometricPrimitive):
             >>> v / 2  # Vector(x=1, y=2, z=3)
         """
         if not np.isscalar(other):
-            raise TypeError(f"Can only divide Vector by scalar, got {type(other)}")
+            raise TypeError(
+                f"Can only divide Vector by scalar, got {type(other).__name__}.\n"
+                "For element-wise division, convert to array:\n"
+                "  np.array(vector) / other  # Element-wise division\n"
+                "  Vector.from_array(np.array(vector) / other, frame=frame)"
+            )
         if other == 0:
-            raise ZeroDivisionError("Cannot divide vector by zero")
+            raise ZeroDivisionError("Cannot divide vector by zero.")
         copy = self.copy()
         copy._homogeneous[:3] /= other
         return copy
@@ -638,7 +664,7 @@ class Vector(GeometricPrimitive):
             >>> v.magnitude  # 1.0
         """
         if self.is_zero:
-            raise RuntimeError(f"Can not normalize vector with zero length {self}")
+            raise RuntimeError(f"Cannot normalize zero-length vector {self}.")
         self._homogeneous[:3] /= self.magnitude
         return self
 
@@ -731,7 +757,12 @@ class Vector(GeometricPrimitive):
         """
         array = np.asarray(array).flatten()
         if array.shape != (3,):
-            raise ValueError(f"Expected 3 coordinates, got {array.shape}")
+            raise ValueError(
+                f"Expected 3 coordinates [x, y, z], got shape {array.shape}.\n"
+                "Use:\n"
+                "  Vector.from_array([x, y, z], frame=frame)\n"
+                "  Vector.from_array(np.array([x, y, z]), frame=frame)"
+            )
         return cls(x=array[0], y=array[1], z=array[2], w=0.0, frame=frame)
 
 
@@ -834,7 +865,14 @@ class Point(GeometricPrimitive):
             >>> p + v  # Point(x=2, y=2, z=3)
         """
         if isinstance(other, Point):
-            raise TypeError("Can not add 2 Points.")
+            raise TypeError(
+                "Cannot add two Points (geometrically undefined).\n"
+                "Use:\n"
+                "  point + vector  # Point (displace point by vector)\n"
+                "  point - point  # Vector (displacement between points)\n"
+                "Or convert to arrays:\n"
+                "  Point.from_array(np.array(p1) + np.array(p2), frame=frame)"
+            )
         elif isinstance(other, Vector):
             check_same_frame(self, other)
             x, y, z = np.array(self) + np.array(other)
@@ -849,8 +887,9 @@ class Point(GeometricPrimitive):
             TypeError: Always, with explanation of alternatives
         """
         raise TypeError(
-            f"Scalar multiplication of {self.__class__.__qualname__} is undefined. "
-            "Points can only be scaled relative to an origin. Use:\n"
+            f"Scalar multiplication of {self.__class__.__qualname__} is undefined.\n"
+            "Points can only be scaled relative to an origin.\n"
+            "Use:\n"
             "  (point - origin) * scalar + origin  # Scale relative to origin\n"
             "Or convert to array:\n"
             "  np.array(point) * scalar  # Coordinate manipulation"
@@ -863,8 +902,9 @@ class Point(GeometricPrimitive):
             TypeError: Always, with explanation of alternatives
         """
         raise TypeError(
-            f"Scalar division of {self.__class__.__qualname__} is undefined. "
-            "Points can only be scaled relative to an origin. Use:\n"
+            f"Scalar division of {self.__class__.__qualname__} is undefined.\n"
+            "Points can only be scaled relative to an origin.\n"
+            "Use:\n"
             "  (point - origin) / scalar + origin  # Scale relative to origin\n"
             "Or convert to array:\n"
             "  np.array(point) / scalar  # Coordinate manipulation"
@@ -908,7 +948,12 @@ class Point(GeometricPrimitive):
         """
         array = np.asarray(array).flatten()
         if array.shape != (3,):
-            raise ValueError(f"Expected 3 coordinates, got {array.shape}")
+            raise ValueError(
+                f"Expected 3 coordinates [x, y, z], got shape {array.shape}.\n"
+                "Use:\n"
+                "  Point.from_array([x, y, z], frame=frame)\n"
+                "  Point.from_array(np.array([x, y, z]), frame=frame)"
+            )
         return cls(x=array[0], y=array[1], z=array[2], w=1.0, frame=frame)
 
     @classmethod
@@ -934,7 +979,12 @@ class Point(GeometricPrimitive):
         points = np.asarray(points)
         if points.shape[-1] != 3:
             raise ValueError(
-                f"Expected last dimension to be 3 (x, y, z), got shape {points.shape}"
+                "Expected last dimension to be 3 (x, y, z), "
+                f"got shape {points.shape}.\n"
+                "Use:\n"
+                "  Point.list_from_array([[x1, y1, z1], "
+                "[x2, y2, z2], ...], frame=frame)\n"
+                "  Point.list_from_array(np.array([[x, y, z], ...]), frame=frame)"
             )
         points = points.reshape((-1, 3))
         return [cls.from_array(arr, frame=frame) for arr in points]
@@ -955,7 +1005,10 @@ def _asarray_geometric(
 ) -> np.ndarray:
     """Convert geometric primitive to array (returns coordinates)."""
     if dtype is not None and not np.issubdtype(dtype, np.floating):
-        raise TypeError("Geometric primitives require floating-point dtype")
+        raise TypeError(
+            f"Geometric primitives require floating-point dtype, got {dtype}.\n"
+            "Use dtype=float, dtype=np.float32, or dtype=np.float64."
+        )
     return a.__array__(dtype=dtype)
 
 
@@ -965,7 +1018,7 @@ def _round_geometric[T: GeometricPrimitive](
 ) -> T:
     if out is not None:
         raise TypeError(
-            "out parameter not supported for GeometricPrimitive. "
+            "out parameter not supported for GeometricPrimitive.\n"
             "Use .round_() for in-place modification."
         )
     return a.round(decimals=decimals)
@@ -980,7 +1033,7 @@ def _clip_geometric[T: GeometricPrimitive](
 ) -> T:
     if out is not None:
         raise TypeError(
-            "out parameter not supported for GeometricPrimitive. "
+            "out parameter not supported for GeometricPrimitive.\n"
             "Use .clip_() for in-place modification."
         )
     return a.clip(a_max=a_max, a_min=a_min)
@@ -1040,7 +1093,7 @@ def _absolute_geometric(a: GeometricPrimitive) -> float:
     if isinstance(a, Vector):
         return a.magnitude
     raise TypeError(
-        f"abs({a.__class__.__qualname__}) is geometrically undefined. "
+        f"abs({a.__class__.__qualname__}) is geometrically undefined.\n"
         "Use np.abs(np.array(point)) for coordinate-wise absolute values."
     )
 
@@ -1064,8 +1117,10 @@ def _cross_geometric(a: Vector, b: Vector, **kwargs) -> Vector:
     """
     if not isinstance(a, Vector) or not isinstance(b, Vector):
         raise TypeError(
-            f"np.cross requires both Vector arguments, "
-            f"got {type(a).__name__} and {type(b).__name__}"
+            f"np.cross requires both Vector arguments, got {type(a).__name__} "
+            f"and {type(b).__name__}.\n"
+            "For array operations, use:\n"
+            "  np.cross(np.array(obj1), np.array(obj2))"
         )
     return a.cross(b)
 
@@ -1089,13 +1144,15 @@ def _dot_geometric(a: Vector, b: Vector, out=None) -> float:
     """
     if out is not None:
         raise TypeError(
-            "out parameter not supported for GeometricPrimitive dot product"
+            "out parameter not supported for GeometricPrimitive dot product."
         )
 
     if not isinstance(a, Vector) or not isinstance(b, Vector):
         raise TypeError(
-            f"np.dot requires both Vector arguments, "
-            f"got {type(a).__name__} and {type(b).__name__}"
+            f"np.dot requires both Vector arguments, got {type(a).__name__} "
+            f"and {type(b).__name__}.\n"
+            "For array operations, use:\n"
+            "  np.dot(np.array(obj1), np.array(obj2))"
         )
     return a.dot(b)
 
@@ -1123,21 +1180,27 @@ def _norm_geometric(
     """
     if not isinstance(x, Vector):
         raise TypeError(
-            f"np.linalg.norm for {x.__class__.__qualname__} is undefined. "
+            f"np.linalg.norm for {x.__class__.__qualname__} is undefined.\n"
             "Use np.linalg.norm(np.array(obj)) for coordinate-wise norm."
         )
 
     if ord is not None:
         raise TypeError(
-            "ord parameter not supported for Vector. "
+            "ord parameter not supported for Vector.\n"
             "Use np.linalg.norm(np.array(vector), ord=...) for custom norms."
         )
 
     if axis is not None:
-        raise TypeError("axis parameter not supported for Vector.")
+        raise TypeError(
+            "axis parameter not supported for Vector.\n"
+            "Use np.linalg.norm(np.array(vector), axis=...) for array operations."
+        )
 
     if keepdims:
-        raise TypeError("keepdims parameter not supported for Vector.")
+        raise TypeError(
+            "keepdims parameter not supported for Vector.\n"
+            "Use np.linalg.norm(np.array(vector), keepdims=...) for array operations."
+        )
 
     return x.magnitude
 
@@ -1172,16 +1235,16 @@ def _stack_geometric(
         >>> np.stack([v1, v2, v3], axis=1)  # (3, 3) array
     """
     if out is not None:
-        raise TypeError("out parameter not supported for GeometricPrimitive stacking")
+        raise TypeError("out parameter not supported for GeometricPrimitive stacking.")
 
     if not arrays:
-        raise ValueError("Cannot stack empty sequence")
+        raise ValueError("Cannot stack empty sequence.")
 
     arrays_list = list(arrays)
 
     if not all_same_type(arrays_list):
         types = {type(a).__name__ for a in arrays_list}
-        raise TypeError(f"All items must be same type, got: {types}")
+        raise TypeError(f"All items must be same type, got: {types}.")
 
     check_same_frame(*arrays_list)
 
@@ -1215,13 +1278,13 @@ def _vstack_geometric(
         >>> np.vstack([p1, p2, p3])  # (3, 3) array
     """
     if not tup:
-        raise ValueError("Cannot vstack empty sequence")
+        raise ValueError("Cannot vstack empty sequence.")
 
     tup_list = list(tup)
 
     if not all_same_type(tup_list):
         types = {type(t).__name__ for t in tup_list}
-        raise TypeError(f"All items must be same type, got: {types}")
+        raise TypeError(f"All items must be same type, got: {types}.")
 
     check_same_frame(*tup_list)
 
@@ -1255,13 +1318,13 @@ def _hstack_geometric(
         >>> np.hstack([v1, v2, v3])  # (3, 3) array - coordinates as columns
     """
     if not tup:
-        raise ValueError("Cannot hstack empty sequence")
+        raise ValueError("Cannot hstack empty sequence.")
 
     tup_list = list(tup)
 
     if not all_same_type(tup_list):
         types = {type(t).__name__ for t in tup_list}
-        raise TypeError(f"All items must be same type, got: {types}")
+        raise TypeError(f"All items must be same type, got: {types}.")
 
     check_same_frame(*tup_list)
 

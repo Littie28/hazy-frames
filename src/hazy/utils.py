@@ -25,16 +25,21 @@ def check_same_frame(*objects: GeometricPrimitive):
     for obj in objects:
         if not hasattr(obj, "frame"):
             raise RuntimeError(
-                f"Expected object with frame attribute, got {type(obj)}: {obj}"
+                "Expected GeometricPrimitive with frame attribute, "
+                f"got {type(obj).__name__}: {obj}.\n"
+                "This is likely a developer error - ensure all arguments are "
+                "Point or Vector instances."
             )
         else:
             frames.append(obj.frame)
 
     if not all(frames[0] == frame for frame in frames[1:]):
-        mixed_systems = set([obj.frame for obj in objects])
+        mixed_systems = set([obj.frame.name for obj in objects])
         raise RuntimeError(
             "Expected all objects to be in the same coordinate system, "
-            f"got {mixed_systems}"
+            f"got frames: {mixed_systems}.\n"
+            "Use obj.to_frame(target_frame) to transform objects to "
+            "a common frame first."
         )
 
 
@@ -55,6 +60,6 @@ def all_same_type(objects: Iterable) -> bool:
     try:
         first = next(iterator)
     except StopIteration as err:
-        raise ValueError("Cannot check type consistency of empty iterable") from err
+        raise ValueError("Cannot check type consistency of empty iterable.") from err
 
     return all(type(first) is type(obj) for obj in iterator)
