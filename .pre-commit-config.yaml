@@ -14,6 +14,13 @@ repos:
       - id: ruff-format
         language: system
 
+  # Strip output from Jupyter notebooks
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        language: system
+
   # General file cleaning hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
