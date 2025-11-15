@@ -6,7 +6,7 @@ support arithmetic operations with proper type semantics.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Self, TypeVar, overload
 
 import numpy as np
@@ -116,11 +116,17 @@ class GeometricPrimitive:
                 "  np.array(obj) == other_array  # Element-wise comparison"
             )
 
-    def __getitem__(self, index: int) -> float:
+    @overload
+    def __getitem__(self, index: Sequence[int]) -> NDArray: ...
+
+    @overload
+    def __getitem__(self, index: int) -> float: ...
+
+    def __getitem__(self, index: int | Sequence[int]) -> float | NDArray:
         """Access coordinates by index: primitive[0] for x, primitive[1] for y, etc."""
         return np.array(self)[index]
 
-    def __iter__(self) -> np.flatiter:
+    def __iter__(self) -> Iterator[np.floating]:
         """Iterate over Cartesian coordinates."""
         return iter(np.array(self))
 
