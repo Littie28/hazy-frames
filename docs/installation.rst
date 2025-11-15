@@ -8,7 +8,7 @@ Requirements
 - NumPy >= 2.3.4
 - SciPy >= 1.16.3
 
-Install from PyPI
+Install from PyPI (not yet supported)
 -----------------
 
 .. code-block:: bash

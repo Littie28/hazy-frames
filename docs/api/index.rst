@@ -6,3 +6,4 @@ API Reference
 
    frame
    geometric_primitives
+   utils

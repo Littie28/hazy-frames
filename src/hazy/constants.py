@@ -7,5 +7,10 @@ VSMALL: float = 1e-8
 VVSMALL: float = 1e-12
 
 IDENTITY_SCALE = np.ones(3, dtype=float)
+"""Identity scaling: no scaling in any dimension."""
+
 IDENTITY_TRANSLATION = np.zeros(3, dtype=float)
+"""Identity translation: no displacement."""
+
 IDENTITY_ROTATION = Rotation.identity()
+"""Identity rotation: no rotation."""
