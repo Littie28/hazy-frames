@@ -574,6 +574,115 @@ class TestCacheInvalidation:
         frame.scale(scale)
         assert frame._cached_transform is None
 
+    def test_child_cache_invalidated_when_parent_modified(self):
+        """Child frame caches should be invalidated when parent is modified"""
+        root = Frame.make_root("root")
+        child = root.make_child("child")
+        grandchild = child.make_child("grandchild")
+
+        # Populate caches
+        _ = child.transform_to_global
+        _ = grandchild.transform_to_global
+        assert child._cached_transform_global is not None
+        assert grandchild._cached_transform_global is not None
+
+        # Modify root - should invalidate all descendant caches
+        root.rotate_euler(z=45, degrees=True)
+        assert child._cached_transform_global is None
+        assert grandchild._cached_transform_global is None
+
+    def test_sibling_caches_invalidated_independently(self):
+        """Sibling frames should have independent cache invalidation"""
+        root = Frame.make_root("root")
+        child1 = root.make_child("child1")
+        child2 = root.make_child("child2")
+
+        # Populate caches
+        _ = child1.transform_to_global
+        _ = child2.transform_to_global
+        assert child1._cached_transform_global is not None
+        assert child2._cached_transform_global is not None
+
+        # Modify child1 - should not affect child2
+        child1.translate(x=1.0)
+        assert child1._cached_transform_global is None
+        assert child2._cached_transform_global is not None
+
+    def test_persistent_primitives_updated_after_parent_rotation(self):
+        """Points/Vectors reflect parent transformations via cache invalidation"""
+        root = Frame.make_root("root")
+        disk = root.make_child("disk")
+        laser_frame = disk.make_child("laser").translate(y=1)
+
+        # Create persistent primitives
+        origin = laser_frame.point(0, 0, 0)
+        direction = laser_frame.vector(1, 0, 0)
+
+        # Initial state
+        origin_global = origin.to_global()
+        assert_allclose(np.array(origin_global), [0, 1, 0], atol=VVSMALL)
+
+        # Rotate parent
+        disk.rotate_euler(z=90, degrees=True)
+
+        # Verify transformation is updated
+        origin_global = origin.to_global()
+        assert_allclose(np.array(origin_global), [-1, 0, 0], atol=1e-10)
+
+        direction_global = direction.to_global()
+        assert_allclose(np.array(direction_global), [0, 1, 0], atol=1e-10)
+
+
+@pytest.mark.unit
+class TestFrameImmutability:
+    def test_parent_cannot_be_changed_after_creation(self):
+        """Parent property should be immutable to maintain consistency"""
+        root = Frame.make_root("root")
+        child = root.make_child("child")
+        other_parent = Frame.make_root("other")
+
+        with pytest.raises(RuntimeError, match="Cannot change parent"):
+            child.parent = other_parent
+
+    def test_parent_setter_provides_helpful_error(self):
+        """Parent setter should provide clear alternatives"""
+        root = Frame.make_root("root")
+        child = root.make_child("child")
+        other_parent = Frame.make_root("other")
+
+        try:
+            child.parent = other_parent
+        except RuntimeError as e:
+            error_msg = str(e)
+            assert "consistency" in error_msg
+            assert "make_child" in error_msg
+        else:
+            pytest.fail("Expected RuntimeError")
+
+
+@pytest.mark.unit
+class TestChildTracking:
+    def test_children_registered_on_creation(self):
+        """Children should be automatically registered in parent's _children set"""
+        root = Frame.make_root("root")
+        child1 = root.make_child("child1")
+        child2 = root.make_child("child2")
+
+        assert len(root._children) == 2
+        assert child1 in root._children
+        assert child2 in root._children
+
+    def test_children_set_prevents_duplicates(self):
+        """Using a set should prevent duplicate children"""
+        root = Frame.make_root("root")
+        child = Frame(parent=root, name="child")
+
+        # Manually try to add duplicate (shouldn't happen in normal usage)
+        root._add_child(child)
+        root._add_child(child)
+
+        assert len(root._children) == 1
+
 
 @pytest.mark.unit
 class TestHierarchyDepth:

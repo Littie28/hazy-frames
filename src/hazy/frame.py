@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 def invalidate_transform_cache(method):
     """Decorator to invalidate cached transforms when frame is modified.
 
+    Invalidates both local and global transform caches of this frame and
+    recursively invalidates global transform caches of all descendant frames.
+
     Args:
         method: Method that modifies the frame
 
@@ -43,6 +46,7 @@ def invalidate_transform_cache(method):
             )
         self._cached_transform = None
         self._cached_transform_global = None
+        self._invalidate_children_cache()
         return method(self, *args, **kwargs)
 
     return wrapper
@@ -79,6 +83,7 @@ class Frame:
         """
         self._parent: Frame | None = parent
         self._name = name or f"Frame-{id(self)}"
+        self._children: set[Frame] = set()
 
         self._rotations: list[Rotation] = [IDENTITY_ROTATION]
         self._translations: list[NDArray[np.floating]] = [IDENTITY_TRANSLATION]
@@ -89,12 +94,46 @@ class Frame:
 
         self._is_frozen = False
 
+        if parent is not None:
+            parent._add_child(self)
+
+    def _add_child(self, child: Frame) -> None:
+        """Register a child frame.
+
+        Args:
+            child: Child frame to register
+        """
+        self._children.add(child)
+
+    def _invalidate_children_cache(self) -> None:
+        """Recursively invalidate global transform cache of all children."""
+        for child in self._children:
+            # Defensive check in case child was deleted but still in set
+            if isinstance(child, Frame):
+                child._cached_transform_global = None
+                child._invalidate_children_cache()
+
     @property
     def parent(self) -> Frame | None:
         """Reference to the parent of this frame.
         If this is a root frame parent is None.
         """
         return self._parent
+
+    @parent.setter
+    def parent(self, value: Frame | None) -> None:
+        """Prevent parent modification after frame creation.
+
+        Raises:
+            RuntimeError: Always, as reparenting would break children set consistency
+        """
+        raise RuntimeError(
+            "Cannot change parent after frame creation.\n"
+            "The parent-child relationship is immutable to maintain consistency.\n"
+            "Create a new frame instead:\n"
+            "  new_frame = new_parent.make_child(name='...')\n"
+            "  new_frame.translate(...).rotate(...)"
+        )
 
     @property
     def name(self) -> str:
