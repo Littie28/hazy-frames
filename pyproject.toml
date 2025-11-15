@@ -43,6 +43,7 @@ dev = [
     "hypothesis>=6.122.4",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.7",
+    "nbstripout>=0.8.1",
     "pre-commit>=4.4.0",
     "pytest>=8.4.1",
     "pytest-cov>=7.0.0",
