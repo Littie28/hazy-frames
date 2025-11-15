@@ -125,7 +125,10 @@ class GeometricPrimitive:
         return iter(np.array(self))
 
     def to_frame(self, target_frame: Frame) -> Self:
-        """Transform this primitive to a different reference frame.
+        """Return copy of primitive transformed to a different reference frame.
+
+        Creates a new primitive with coordinates transformed to the target frame.
+        The original primitive remains unchanged.
 
         Args:
             target_frame: Target reference frame
@@ -151,13 +154,16 @@ class GeometricPrimitive:
             return type(self)(x=x, y=y, z=z, w=0.0, frame=target_frame)
 
     def to_global(self) -> Self:
-        """Transform to the root frame of this primitive's hierarchy.
+        """Return copy of primitive transformed to the root frame.
+
+        Creates a new primitive with coordinates in the root (top-most parent) frame.
+        The original primitive remains unchanged.
 
         For frames with parents, this transforms to the top-most parent.
         For orphan frames, this returns coordinates in the orphan frame itself.
 
         Returns:
-            Primitive in root frame coordinates
+            New primitive in root frame coordinates
         """
         return self.to_frame(target_frame=self.frame.root)
 
