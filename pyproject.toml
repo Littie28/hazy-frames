@@ -32,7 +32,10 @@ Repository = "https://github.com/Littie28/hazy-frames"
 Issues = "https://github.com/Littie28/hazy-frames/issues"
 
 [project.optional-dependencies]
-examples = []
+examples = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.7",
+]
 
 [dependency-groups]
 dev = [
@@ -46,6 +49,10 @@ dev = [
     "pytest-mock>=3.15.1",
     "pytest-watcher>=0.4.3",
     "ruff>=0.14.5",
+]
+examples = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.7",
 ]
 
 [tool.ruff]

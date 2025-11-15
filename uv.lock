@@ -606,6 +606,12 @@ dependencies = [
     { name = "scipy" },
 ]
 
+[package.optional-dependencies]
+examples = [
+    { name = "jupyter" },
+    { name = "matplotlib" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "coverage-badge" },
@@ -619,9 +625,15 @@ dev = [
     { name = "pytest-watcher" },
     { name = "ruff" },
 ]
+examples = [
+    { name = "jupyter" },
+    { name = "matplotlib" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "jupyter", marker = "extra == 'examples'", specifier = ">=1.1.1" },
+    { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.10.7" },
     { name = "numpy", specifier = ">=2.3.4" },
     { name = "scipy", specifier = ">=1.16.3" },
 ]
@@ -639,6 +651,10 @@ dev = [
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "pytest-watcher", specifier = ">=0.4.3" },
     { name = "ruff", specifier = ">=0.14.5" },
+]
+examples = [
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "matplotlib", specifier = ">=3.10.7" },
 ]
 
 [[package]]
