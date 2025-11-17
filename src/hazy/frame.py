@@ -17,6 +17,8 @@ from hazy.constants import IDENTITY_ROTATION, IDENTITY_SCALE, IDENTITY_TRANSLATI
 from hazy.primitives import Point, Vector
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import ArrayLike, NDArray
 
 
@@ -368,13 +370,34 @@ class Frame:
         return self
 
     @invalidate_transform_cache
-    def translate(self, *, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self:
+    def clear_rotations(self) -> Self:
+        """Clear all rotations.
+
+        Returns:
+            Self for method chaining
+        """
+        self._rotations = [IDENTITY_ROTATION]
+        return self
+
+    @overload
+    def translate(self, x: float, y: float, z: float) -> Self: ...
+
+    @overload
+    def translate(self, x: Sequence[float]) -> Self: ...
+
+    @overload
+    def translate(self, *, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self: ...
+
+    @invalidate_transform_cache
+    def translate(
+        self, x: float | Sequence[float] = 0.0, y: float = 0.0, z: float = 0.0
+    ) -> Self:
         """Add translation to frame.
 
         Args:
-            x: Translation along x-axis
-            y: Translation along y-axis
-            z: Translation along z-axis
+            x: Translation along x-axis or (x, y, z) array
+            y: Translation along y-axis (not allowed if x is array)
+            z: Translation along z-axis (not allowed if x is array)
 
         Returns:
             Self for method chaining
@@ -382,25 +405,55 @@ class Frame:
         Examples:
             >>> frame = Frame()
             >>> frame.translate(x=1.0, y=2.0, z=3.0)
+            >>> frame.translate([1.0, 2.0, 3.0])
         """
-        translation = np.array([x, y, z], dtype=float)
+        if np.isscalar(x):
+            translation = np.array([x, y, z], dtype=float)
+        else:
+            translation = np.asarray(x).flatten()
+            if translation.shape != (3,):
+                raise ValueError(
+                    f"Can not translate by x. Expected array with shape (3,) got {x=}"
+                )
+
+            if y != 0 or z != 0:
+                raise ValueError(
+                    "y and z parameter are not supported if x is a Sequence,"
+                    f" got {x=}, {y=} and {z=}"
+                )
+
         self._translations.append(translation)
+        return self
+
+    @invalidate_transform_cache
+    def clear_translations(self) -> Self:
+        """Clear all translations.
+
+        Returns:
+            Self for method chaining
+        """
+        self._translations = [IDENTITY_TRANSLATION]
         return self
 
     @overload
     def scale(self, x: float) -> Self: ...
 
     @overload
+    def scale(self, x: Sequence[float]) -> Self: ...
+
+    @overload
     def scale(self, x: float, y: float, z: float) -> Self: ...
 
     @invalidate_transform_cache
-    def scale(self, x: float, y: float | None = None, z: float | None = None) -> Self:
+    def scale(
+        self, x: float | Sequence[float], y: float | None = None, z: float | None = None
+    ) -> Self:
         """Add scaling to frame.
 
         Args:
-            x: Uniform scale factor or x-axis scale
-            y: Y-axis scale (if provided, x/y/z are per-axis scales)
-            z: Z-axis scale (if provided, x/y/z are per-axis scales)
+            x: Uniform scale factor, x-axis scale, or (x, y, z) array
+            y: Y-axis scale (not allowed if x is array)
+            z: Z-axis scale (not allowed if x is array)
 
         Returns:
             Self for method chaining
@@ -409,20 +462,56 @@ class Frame:
             >>> frame = Frame()
             >>> frame.scale(2.0)  # Uniform scaling
             >>> frame.scale(1.0, 2.0, 3.0)  # Per-axis scaling
+            >>> frame.scale([1.0, 2.0, 3.0])  # Array input
         """
-        if y is None and z is None:
-            scaling = np.ones(3, dtype=float) * x
-        elif y is not None and z is not None:
-            scaling = np.array([x, y, z], dtype=float)
+        if np.isscalar(x):
+            if y is z is None:
+                scaling = np.array([x, x, x], dtype=float)
+            elif y is not None and z is not None:
+                scaling = np.array([x, y, z], dtype=float)
+            else:
+                raise ValueError(
+                    "Provide either uniform scale or (x, y, z).\n"
+                    "Use:\n"
+                    "  frame.scale(2.0)  # Uniform scaling\n"
+                    "  frame.scale(1.0, 2.0, 3.0)  # Per-axis scaling"
+                )
         else:
-            raise ValueError(
-                "Provide either uniform scale or (x, y, z).\n"
-                "Use:\n"
-                "  frame.scale(2.0)  # Uniform scaling\n"
-                "  frame.scale(1.0, 2.0, 3.0)  # Per-axis scaling"
-            )
+            scaling = np.asarray(x).flatten()
+            if scaling.shape != (3,):
+                raise ValueError(
+                    f"Cannot scale by array with shape {np.asarray(x).shape}. "
+                    f"Expected shape (3,), got {x}"
+                )
+            if y is not None or z is not None:
+                raise ValueError(
+                    "y and z parameters are not supported if x is a Sequence, "
+                    f"got x={x}, y={y}, z={z}"
+                )
 
         self._scalings.append(scaling)
+        return self
+
+    @invalidate_transform_cache
+    def clear_scalings(self) -> Self:
+        """Clear all scalings.
+
+        Returns:
+            Self for method chaining
+        """
+        self._scalings = [IDENTITY_SCALE]
+        return self
+
+    @invalidate_transform_cache
+    def clear_all_transforms(self) -> Self:
+        """Clear all transformations.
+
+        Returns:
+            Self for method chaining
+        """
+        self.clear_rotations()
+        self.clear_translations()
+        self.clear_scalings()
         return self
 
     def transform_to(self, target: Frame) -> NDArray[np.floating]:
