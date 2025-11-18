@@ -7,10 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("../src"))
 
+import hazy
+
 project = "hazy-frames"
 copyright = "2025, Littie28"
 author = "Littie28"
-release = "0.1.0"
+release = hazy.__version__
 
 extensions = [
     "sphinx.ext.autodoc",
