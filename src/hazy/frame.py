@@ -346,7 +346,7 @@ class Frame:
                     [1, 0, 0, 0], scalar_first=True
                 )  # Identity, scalar first
         """
-        R = Rotation.from_quaternion(quaternion, scalar_first=scalar_first)
+        R = Rotation.from_quat(quaternion, scalar_first=scalar_first)
         self._rotations.append(R)
         return self
 
@@ -606,6 +606,14 @@ class Frame:
         if y is None and z is None:
             return Point.from_array(x, frame=self)
         elif y is not None and z is not None:
+            if not np.isscalar(x):
+                raise ValueError(
+                    "x must be a scalar if y and z are given, got {x}.\n"
+                    "Provide either (x, y, z) or single array-like.\n"
+                    "Use:\n"
+                    "  frame.point(1.0, 2.0, 3.0)  # Three scalars\n"
+                    "  frame.point([1, 2, 3])  # Array-like"
+                )
             return Point(x=x, y=y, z=z, frame=self)
         else:
             raise ValueError(

@@ -536,3 +536,14 @@ class TestNumpyArrayConversion:
         assert v_copy == v
         assert v_copy is not v
         assert v_copy.frame is v.frame
+
+
+@pytest.mark.numpy
+class TestNumpyIntegration:
+    def test_numpy_add_point(self, root_frame: Frame):
+        """Test if"""
+        point = root_frame.point(0.0, 0.0, 0.0)
+        array = np.array((1.0, 2.0, 3.0))
+
+        with pytest.raises(TypeError):
+            point = point + array
