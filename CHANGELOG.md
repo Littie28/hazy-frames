@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Transformation Clear Methods**: New methods to reset transformations
+  - `Frame.clear_rotations()` - Reset all rotations to identity
+  - `Frame.clear_translations()` - Reset all translations to zero
+  - `Frame.clear_scalings()` - Reset all scalings to identity
+  - `Frame.clear_all_transforms()` - Reset all transformations at once
+
+- **Array Input Support**: Enhanced NumPy integration for transformation methods
+  - `Frame.translate()` now accepts array input: `translate([x, y, z])`
+  - `Frame.scale()` now accepts array input: `scale([x, y, z])`
+  - Maintains backward compatibility with existing APIs
+
+### Changed
+
+- **Improved Error Messages**: Better validation and error messages for transformation methods
+  - `Frame.scale()` provides clearer guidance when mixing scalar and per-axis arguments
+  - Validates array shapes and provides helpful error messages
+
 ## [0.2.0] - 2025-11-15
 
 ### Added
