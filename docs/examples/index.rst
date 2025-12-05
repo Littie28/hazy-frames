@@ -9,3 +9,4 @@ Interactive examples demonstrating coordinate frame transformations.
    01-surface_intersections
    02-frame-hierarchies
    03-simple-robot-arm
+   04-simple-raytracing
