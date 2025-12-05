@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Frame.scale()` now accepts array input: `scale([x, y, z])`
   - Maintains backward compatibility with existing APIs
 
+- **Examples**: New advanced optical raytracing example
+  - `03-simple-robot-arm.ipynb`: Robot arm kinematics with hierarchical frames and animation
+  - `04-simple-raytracing.ipynb`: Optical raytracing through lens surfaces
+    - Demonstrates frame transformations simplifying optical system design
+    - Implements meridional plane reduction for axisymmetric surfaces
+    - Shows spherical and hyperbolic lens profiles with aberration visualization
+    - Features immutable Ray class with Snell's law vector refraction
+
 ### Changed
 
 - **Improved Error Messages**: Better validation and error messages for transformation methods
