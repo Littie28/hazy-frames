@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 keywords = ["geometry", "coordinate-systems", "transformations", "frames", "3d"]
-authors = [{ name = "Littie28" }]
+authors = [{ name = "Moritz Kluwe", emial = "moritz.0x1C@proton.me" }]
 dependencies = ["numpy>=2.3.4", "scipy>=1.16.3"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -30,6 +30,7 @@ classifiers = [
 Homepage = "https://github.com/Littie28/hazy-frames"
 Repository = "https://github.com/Littie28/hazy-frames"
 Issues = "https://github.com/Littie28/hazy-frames/issues"
+Documentation = "https://hazy-frames.readthedocs.io"
 
 [project.optional-dependencies]
 examples = [
