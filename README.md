@@ -27,10 +27,10 @@ A Python library for managing hierarchical reference frames and frame-aware geom
 
 ## Installation
 
-Install directly from GitHub:
+Install directly from PyPI:
 
 ```bash
-pip install git+https://github.com/Littie28/hazy-frames.git
+pip install hazy-frames
 ```
 
 Or download the wheel from [releases](https://github.com/Littie28/hazy-frames/releases/latest):

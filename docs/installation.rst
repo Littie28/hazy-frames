@@ -8,26 +8,18 @@ Requirements
 - NumPy >= 2.3.4
 - SciPy >= 1.16.3
 
-Install from PyPI (not yet supported)
--------------------------------------
+Install from PyPI
+-----------------
 
 .. code-block:: bash
 
-   pip install hazy-frames
+    pip install hazy-frames
 
-Install with pip
-----------------
-
-.. code-block:: bash
-
-   pip install git+https://github.com/Littie28/hazy-frames.git
-
-Install with uv
----------------
+Or wit uv:
 
 .. code-block:: bash
 
-   uv add git+https://github.com/Littie28/hazy-frames.git
+    uv add hazy-frames
 
 Install from source
 -------------------
