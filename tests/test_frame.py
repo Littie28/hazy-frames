@@ -409,13 +409,19 @@ class TestRotations:
             frame.rotate_euler(5, degrees=True)
 
     def test_rotate_quaternion_invalid_args_raises_value_error(self, frame: Frame):
-        with pytest.raises(ValueError, match="Expected `quat` to have shape"):
+        with pytest.raises(
+            ValueError, match="Quaternion must have shape \\(4,\\), got .*"
+        ):
             frame.rotate_quaternion((1, 2, 3))
 
-        with pytest.raises(ValueError, match="Expected `quat` to have shape"):
+        with pytest.raises(
+            ValueError, match="Quaternion must have shape \\(4,\\), got .*"
+        ):
             frame.rotate_quaternion((1, 2, 3, 5, 6))
 
-        with pytest.raises(ValueError, match="Expected `quat` to have shape"):
+        with pytest.raises(
+            ValueError, match="Quaternion must have shape \\(4,\\), got .*"
+        ):
             frame.rotate_quaternion(1)
 
     def test_rotate_quaternion(self, frame: Frame):

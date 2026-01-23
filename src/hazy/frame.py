@@ -346,6 +346,9 @@ class Frame:
                     [1, 0, 0, 0], scalar_first=True
                 )  # Identity, scalar first
         """
+        quaternion = np.asarray(quaternion)
+        if quaternion.ndim != 1 or quaternion.shape[0] != 4:
+            raise ValueError(f"Quaternion must have shape (4,), got {quaternion.shape}")
         R = Rotation.from_quat(quaternion, scalar_first=scalar_first)
         self._rotations.append(R)
         return self
