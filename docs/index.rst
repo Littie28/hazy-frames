@@ -45,13 +45,13 @@ Installation
 
 .. code-block:: bash
 
-   pip install git+https://github.com/Littie28/hazy-frames.git
+   pip install hazy-frames
 
 Or with uv:
 
 .. code-block:: bash
 
-   uv add git+https://github.com/Littie28/hazy-frames.git
+   uv add hayz-frames
 
 Indices and tables
 ==================
