@@ -15,7 +15,7 @@ Install from PyPI
 
     pip install hazy-frames
 
-Or wit uv:
+Or with uv:
 
 .. code-block:: bash
 

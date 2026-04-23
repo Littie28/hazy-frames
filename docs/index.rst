@@ -51,7 +51,7 @@ Or with uv:
 
 .. code-block:: bash
 
-   uv add hayz-frames
+   uv add hazy-frames
 
 Indices and tables
 ==================

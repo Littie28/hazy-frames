@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 keywords = ["geometry", "coordinate-systems", "transformations", "frames", "3d"]
-authors = [{ name = "Moritz Kluwe", emial = "moritz.0x1C@proton.me" }]
+authors = [{ name = "Moritz Kluwe", email = "moritz.0x1C@proton.me" }]
 dependencies = ["numpy>=2.3.4", "scipy>=1.16.3"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -33,10 +33,7 @@ Issues = "https://github.com/Littie28/hazy-frames/issues"
 Documentation = "https://hazy-frames.readthedocs.io"
 
 [project.optional-dependencies]
-examples = [
-    "jupyter>=1.1.1",
-    "matplotlib>=3.10.7",
-]
+examples = ["jupyter>=1.1.1", "matplotlib>=3.10.7"]
 docs = [
     "sphinx>=8.1.3",
     "sphinx-rtd-theme>=3.0.2",
@@ -64,10 +61,7 @@ dev = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-rtd-theme>=3.0.2",
 ]
-examples = [
-    "jupyter>=1.1.1",
-    "matplotlib>=3.10.7",
-]
+examples = ["jupyter>=1.1.1", "matplotlib>=3.10.7"]
 
 [tool.ruff]
 line-length = 88
