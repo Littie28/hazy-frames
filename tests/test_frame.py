@@ -1439,3 +1439,22 @@ class TestClearMethodsProperties:
         reapplied_transform = frame.transform_to_global
 
         assert_allclose(original_transform, reapplied_transform, atol=1e-9)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("seq", ["xyz", "xzy", "yzx", "yxz", "zxy", "zyx"])
+@pytest.mark.parametrize("axis", ["x", "y", "z"])
+def test_rotate_euler_assigns_angles_by_name(seq, axis):
+    frame = Frame().rotate_euler(seq=seq, degrees=True, **{axis: 30})
+
+    expected = Rotation.from_euler(axis, 30, degrees=True).as_matrix()
+    assert_allclose(frame.transform_to_parent[:3, :3], expected, atol=VVSMALL)
+
+
+@pytest.mark.unit
+def test_transform_to_global_returns_copy_on_first_call():
+    frame = Frame().make_child().translate(x=1)
+
+    frame.transform_to_global[:] = 0
+
+    assert_allclose(frame.transform_to_global[0, 3], 1.0)

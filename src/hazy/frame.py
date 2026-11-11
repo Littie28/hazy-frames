@@ -220,7 +220,7 @@ class Frame:
             self._cached_transform_global = (
                 self.parent.transform_to_global @ self.transform_to_parent
             )
-        return self._cached_transform_global
+        return self._cached_transform_global.copy()
 
     @property
     def transform_from_global(self) -> NDArray[np.floating]:
@@ -321,7 +321,9 @@ class Frame:
             >>> frame.rotate_euler(y=np.pi) # default radians
             >>> frame.rotate_euler(x=30, y=45, z=60, seq="zyx", degrees=True)
         """
-        R = Rotation.from_euler(seq=seq, angles=(x, y, z), degrees=degrees)
+        angles_by_axis = {"x": x, "y": y, "z": z}
+        angles = [angles_by_axis[axis] for axis in seq]
+        R = Rotation.from_euler(seq=seq, angles=angles, degrees=degrees)
         self._rotations.append(R)
         return self
 

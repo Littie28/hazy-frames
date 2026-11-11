@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Frame.scale()` provides clearer guidance when mixing scalar and per-axis arguments
   - Validates array shapes and provides helpful error messages
 
+### Fixed
+
+- `Frame.rotate_euler()` assigned `x`, `y`, `z` to the sequence by position instead of by axis name, e.g. `rotate_euler(x=30, seq="zyx")` rotated about z
+- `Frame.transform_to_global` returned its cached array on the first call, so modifying the result corrupted the cache
+
 ## [0.2.0] - 2025-11-15
 
 ### Added
