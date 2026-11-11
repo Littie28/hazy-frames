@@ -27,6 +27,6 @@ from __future__ import annotations
 from hazy.frame import Frame
 from hazy.primitives import Point, Vector
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = ["Frame", "Point", "Vector"]
