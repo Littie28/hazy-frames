@@ -14,6 +14,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from hazy.constants import IDENTITY_ROTATION, IDENTITY_SCALE, IDENTITY_TRANSLATION
+from hazy.primitive_arrays import Points, Vectors
 from hazy.primitives import Point, Vector
 
 if TYPE_CHECKING:
@@ -655,6 +656,37 @@ class Frame:
                 "  frame.point(1.0, 2.0, 3.0)  # Three scalars\n"
                 "  frame.point([1, 2, 3])  # Array-like"
             )
+
+    def points(self, coords: ArrayLike, *, copy: bool = True) -> Points:
+        """Create a batch of points in this frame.
+
+        Args:
+            coords: Array-like with shape (..., 3), at least 2-D
+            copy: If False, reuse the memory of `coords` when possible
+
+        Returns:
+            Points sharing this frame
+
+        Examples:
+            >>> cloud = camera.points(np.random.rand(1000, 3))
+            >>> cloud.to_frame(world)
+        """
+        return Points(coords, frame=self, copy=copy)
+
+    def vectors(self, coords: ArrayLike, *, copy: bool = True) -> Vectors:
+        """Create a batch of vectors in this frame.
+
+        Args:
+            coords: Array-like with shape (..., 3), at least 2-D
+            copy: If False, reuse the memory of `coords` when possible
+
+        Returns:
+            Vectors sharing this frame
+
+        Examples:
+            >>> directions = camera.vectors([[0, 0, 1], [0, 1, 1]]).normalize()
+        """
+        return Vectors(coords, frame=self, copy=copy)
 
     def batch_transform_points_global(
         self, points: NDArray[np.floating]

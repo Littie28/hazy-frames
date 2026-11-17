@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Batched Primitives**: `Points` and `Vectors` hold many coordinates of shape
+  `(..., 3)` in one frame and run all operations vectorized
+  - Create with `frame.points(array)` / `frame.vectors(array)`,
+    `Points.from_array()` or `Points.from_primitives([p1, p2])`
+  - Same type rules as `Point`/`Vector`, mixable with them via broadcasting
+    (`points - frame.origin` gives `Vectors`)
+  - `batch[i]` returns an independent `Point`/`Vector` copy, slices return
+    views and masks return copies (numpy semantics), `to_list()` converts back
+  - `np.asarray(batch)` is a zero-copy view for raw coordinate access
+  - Vectors: `magnitude`, `normalize()`, `dot()`, `cross()`, per-element scaling
+  - NumPy support: rounding/clipping, `isnan`/`isfinite`, `linalg.norm`,
+    `cross`, `vecdot`, `concatenate`, `stack`, `copy`
 - `benchmarks/bench_transforms.py` micro benchmarks for the hot paths
 
 ### Changed

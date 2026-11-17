@@ -7,6 +7,7 @@ Key classes:
     - Frame: Hierarchical reference frame with transformation tracking
     - Point: Geometric point with frame awareness (w=1)
     - Vector: Geometric vector with frame awareness (w=0)
+    - Points, Vectors: Batches of points/vectors sharing one frame (fast path)
 
 Example:
     >>> from hazy import Frame, Point, Vector
@@ -25,8 +26,9 @@ Example:
 from __future__ import annotations
 
 from hazy.frame import Frame
+from hazy.primitive_arrays import Points, Vectors
 from hazy.primitives import Point, Vector
 
 __version__ = "0.2.1"
 
-__all__ = ["Frame", "Point", "Vector"]
+__all__ = ["Frame", "Point", "Points", "Vector", "Vectors"]
