@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Point` and `Vector` use `__slots__`; setting arbitrary attributes on them
   now raises `AttributeError`
 
+### Fixed
+
+- **Memory Leak**: parents held strong references to their children, so a
+  frame hierarchy never released child frames while its root was alive.
+  Children are now tracked weakly; frames, points and batches still keep
+  their frame and all its ancestors alive. `deepcopy` and `pickle` rebuild
+  the child links of the copied hierarchy
+
 ### Removed
 
 - **BREAKING**: `Frame.batch_transform_points_global()` and

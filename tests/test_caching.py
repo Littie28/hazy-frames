@@ -6,6 +6,11 @@ hierarchy are queried and modified.
 
 from __future__ import annotations
 
+import gc
+import pickle
+import weakref
+from copy import deepcopy
+
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -141,3 +146,68 @@ class TestPrimitiveInternals:
         assert type(v - v).__name__ == "Vector"
         assert type(-v).__name__ == "Vector"
         assert_allclose((p - q).to_global(), [1, 1, 2])
+
+
+@pytest.mark.unit
+class TestFrameLifetime:
+    def test_unreferenced_child_is_garbage_collected(self, root_frame: Frame):
+        child = root_frame.make_child("temporary").translate(x=1)
+        child_ref = weakref.ref(child)
+
+        del child
+        gc.collect()
+
+        assert child_ref() is None
+        assert len(root_frame._children) == 0
+
+    def test_primitive_keeps_its_frame_and_ancestors_alive(self):
+        point = Frame.make_root("world").make_child("camera").point(1, 2, 3)
+        frame_ref = weakref.ref(point.frame)
+        gc.collect()
+
+        assert frame_ref() is point.frame
+        assert point.frame.root.name == "world"
+        assert_allclose(point.to_global(), [1, 2, 3])
+
+    def test_surviving_children_still_see_parent_changes(self, root_frame: Frame):
+        parent = root_frame.make_child("parent")
+        kept = parent.make_child("kept")
+        points = kept.points([[0.0, 0.0, 0.0]])
+        for index in range(10):
+            parent.make_child(f"dropped-{index}").origin_global  # noqa: B018
+        _ = kept.origin_global
+        gc.collect()
+
+        parent.translate(x=2)
+
+        assert_allclose(kept.origin_global, [2, 0, 0])
+        assert_allclose(points.to_global(), [[2, 0, 0]])
+        assert list(parent._children) == [kept]
+
+    def test_deepcopy_keeps_copied_hierarchy_consistent(self, root_frame: Frame):
+        parent = root_frame.make_child("parent")
+        child = parent.make_child("child").translate(y=1)
+        _ = child.origin_global
+
+        copied = deepcopy(child)
+        assert copied.parent is not None
+        copied.parent.translate(x=5)
+
+        assert list(copied.parent._children) == [copied]
+        assert_allclose(copied.origin_global, [5, 1, 0])
+        assert_allclose(child.origin_global, [0, 1, 0])
+
+        parent.translate(z=2)
+        assert_allclose(child.origin_global, [0, 1, 2])
+        assert_allclose(copied.origin_global, [5, 1, 0])
+
+    def test_pickle_round_trip_keeps_hierarchy(self, root_frame: Frame):
+        parent = root_frame.make_child("parent")
+        point = parent.make_child("child").translate(x=1).point(1, 0, 0)
+        _ = point.to_global()
+
+        restored = pickle.loads(pickle.dumps(point))
+        assert restored.frame.parent is not None
+        restored.frame.parent.translate(y=2)
+
+        assert_allclose(restored.to_global(), [2, 2, 0])

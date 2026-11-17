@@ -8,7 +8,8 @@ with parent-child relationships, and transformations are cached for performance.
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Literal, Self, overload
+from typing import TYPE_CHECKING, Any, Literal, Self, overload
+from weakref import WeakSet
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -89,7 +90,9 @@ class Frame:
         self._parent: Frame | None = parent
         self._root: Frame = self if parent is None else parent.root
         self._name = name or f"Frame-{id(self)}"
-        self._children: set[Frame] = set()
+        # Weak, so the hierarchy never keeps unreferenced frames alive. Children
+        # hold their parent strongly, which keeps all ancestors alive.
+        self._children: WeakSet[Frame] = WeakSet()
 
         self._rotations: list[Rotation] = [IDENTITY_ROTATION]
         self._translations: list[NDArray[np.floating]] = [IDENTITY_TRANSLATION]
@@ -111,6 +114,25 @@ class Frame:
             child: Child frame to register
         """
         self._children.add(child)
+
+    def __getstate__(self) -> dict[str, Any]:
+        """State for pickle and copy, without weak child links and caches.
+
+        Child links are rebuilt by each child in __setstate__, so a copied
+        or unpickled frame is registered with its copied parent only.
+        """
+        state = self.__dict__.copy()
+        del state["_children"]
+        state["_cached_transform"] = None
+        state["_cached_transform_global"] = None
+        state["_cached_transform_global_inverse"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        self._children = WeakSet()
+        if self._parent is not None:
+            self._parent._add_child(self)
 
     def _clear_transform_caches(self) -> None:
         """Invalidate local and global caches of this frame and its descendants."""
