@@ -2,14 +2,16 @@
 
 ## utils
 
-```{automodule} hazy.utils
-:members:
-:undoc-members:
+```{eval-rst}
+.. automodule:: hazy.utils
+   :members:
+   :undoc-members:
 ```
 
 ## constants
 
-```{automodule} hazy.constants
-:members:
-:undoc-members:
+```{eval-rst}
+.. automodule:: hazy.constants
+   :members:
+   :undoc-members:
 ```

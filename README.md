@@ -19,9 +19,10 @@ A Python library for managing hierarchical reference frames and frame-aware geom
 
 - **Hierarchical Frame System**: Build complex frame hierarchies with parent-child relationships
 - **Frame-Aware Primitives**: `Point` and `Vector` classes that carry frame information
-- **NumPy Integration**: Native array support with batch operations, factory methods, and stack functions
+- **Batched Primitives**: `Points` and `Vectors` hold many coordinates in one frame and transform them at numpy speed, with the same type rules as `Point` and `Vector`
+- **NumPy Integration**: Zero-copy opt-out via `np.asarray()`, support for rounding, clipping, norms, cross products, stacking and concatenation
 - **Automatic Transformations**: Transform primitives between any frames in the hierarchy
-- **Efficient Caching**: Transformation matrices are cached for performance
+- **Efficient Caching**: Transformation matrices and their inverses are cached, unused frames are garbage collected
 - **Proper Geometric Semantics**: Type-safe arithmetic operations (e.g., Point - Point = Vector)
 - **Flexible Transformations**: Support for rotation (Euler angles, quaternions, matrices), translation, and scaling
 
@@ -36,7 +37,7 @@ pip install hazy-frames
 Or download the wheel from [releases](https://github.com/Littie28/hazy-frames/releases/latest):
 
 ```bash
-pip install hazy_frames-0.2.1-py3-none-any.whl
+pip install hazy_frames-<version>-py3-none-any.whl
 ```
 
 For development:
@@ -73,6 +74,19 @@ point_in_robot = point_in_camera.to_frame(robot)
 print(f"Camera: {point_in_camera}")
 print(f"World: {point_in_world}")
 print(f"Robot: {point_in_robot}")
+```
+
+For many points, use the batched types. One call transforms all of them:
+
+```python
+import numpy as np
+
+scan = camera.points(np.random.rand(100_000, 3))  # Points, shape (100000,)
+scan_in_world = scan.to_frame(world)
+
+distances = (scan - camera.origin).magnitude       # Vectors -> ndarray
+nearby = scan[distances < 0.5]                     # Points (numpy-style mask)
+coords = np.asarray(scan_in_world)                 # (100000, 3) view, no copy
 ```
 
 ## Documentation

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - NumPy support: rounding/clipping, `isnan`/`isfinite`, `linalg.norm`,
     `cross`, `vecdot`, `concatenate`, `stack`, `copy`
 - `benchmarks/bench_transforms.py` micro benchmarks for the hot paths
+- Docs: batched types in API reference, quickstart, landing page and README
 
 ### Changed
 
@@ -41,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Children are now tracked weakly; frames, points and batches still keep
   their frame and all its ancestors alive. `deepcopy` and `pickle` rebuild
   the child links of the copied hierarchy
+- **Docs**: the API reference rendered autodoc output as raw reST text since
+  the MyST conversion; autodoc directives now run inside `{eval-rst}` blocks
 - `Frame.point()` error message showed a literal `{x}`; `Frame.vector()` now
   validates scalar coordinates the same way instead of failing inside numpy
 - **Typing**: clean under ty and pyright
