@@ -272,64 +272,64 @@ class TestBuildinIntegration:
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
-            point = point + 5
+            point = point + 5  # type: ignore
 
         # float
         with pytest.raises(TypeError, match="unsupported operand"):
-            point = point + 5.0
+            point = point + 5.0  # type: ignore
 
         # complex
         with pytest.raises(TypeError, match="unsupported operand"):
             z = 5.0 + 1j
-            point = point + z
+            point = point + z  # type: ignore
 
     def test_add_scalar_vector_raises(self, root_frame: Frame):
         vector = root_frame.vector(1.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
-            vector = vector + 5
+            vector = vector + 5  # type: ignore
 
         # float
         with pytest.raises(TypeError, match="unsupported operand"):
-            vector = vector + 5.0
+            vector = vector + 5.0  # type: ignore
 
         # complex
         with pytest.raises(TypeError, match="unsupported operand"):
             z = 5.0 + 1j
-            vector = vector + z
+            vector = vector + z  # type: ignore
 
     def test_subtract_scalar_point(self, root_frame: Frame):
         point = root_frame.point(0.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
-            point = point - 5
+            point = point - 5  # type: ignore
 
         # float
         with pytest.raises(TypeError, match="unsupported operand"):
-            point = point - 5.0
+            point = point - 5.0  # type: ignore
 
         # complex
         with pytest.raises(TypeError, match="unsupported operand"):
             z = 5.0 + 1j
-            point = point - z
+            point = point - z  # type: ignore
 
     def test_subtract_scalar_vector(self, root_frame: Frame):
         vector = root_frame.vector(1.0, 0.0, 0.0)
 
         # integer
         with pytest.raises(TypeError, match="unsupported operand"):
-            vector = vector - 5
+            vector = vector - 5  # type: ignore
 
         # float
         with pytest.raises(TypeError, match="unsupported operand"):
-            vector = vector - 5.0
+            vector = vector - 5.0  # type: ignore
 
         # complex
         with pytest.raises(TypeError, match="unsupported operand"):
             z = 5.0 + 1j
-            vector = vector - z
+            vector = vector - z  # type: ignore
 
     def test_multiply_scalar_point(self, root_frame: Frame):
         # integer
@@ -375,7 +375,7 @@ class TestBuildinIntegration:
             TypeError, match="Complex number multiplication not supported"
         ):
             z = 5.0 + 1j
-            vector = vector * z
+            vector = vector * z  # type: ignore
 
 
 @pytest.mark.integration

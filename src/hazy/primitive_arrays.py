@@ -13,7 +13,7 @@ Indexing follows numpy semantics on the leading axes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, overload
 
 import numpy as np
 
@@ -42,10 +42,10 @@ def implements(numpy_function: Callable[..., Any]):
     return decorator
 
 
-type Geometric = GeometricPrimitive | PrimitiveArray
+type Geometric = GeometricPrimitive | PrimitiveArray[Any]
 
 
-def _coordinates(obj: Geometric) -> NDArray[np.floating]:
+def _coordinates(obj: Geometric) -> NDArray[np.float64]:
     if isinstance(obj, PrimitiveArray):
         return obj._coords
     return obj._homogeneous[:3]
@@ -60,7 +60,7 @@ def _leading_axis(axis: int) -> int:
     return axis - 1 if axis < 0 else axis
 
 
-class PrimitiveArray:
+class PrimitiveArray[E: GeometricPrimitive]:
     """Base class for batches of geometric primitives sharing one frame.
 
     Coordinates are stored as a float array of shape (..., 3). The leading
@@ -69,7 +69,9 @@ class PrimitiveArray:
 
     __slots__ = ("_coords", "frame")
 
-    _element_type: ClassVar[type[Point | Vector]]
+    _coords: NDArray[np.float64]
+    frame: Frame
+    _element_type: type[E]
     _is_point: ClassVar[bool]
 
     def __init__(self, coords: ArrayLike, frame: Frame, *, copy: bool = True):
@@ -98,7 +100,7 @@ class PrimitiveArray:
         self.frame = frame
 
     @classmethod
-    def _wrap(cls, coords: NDArray[np.floating], frame: Frame) -> Self:
+    def _wrap(cls, coords: NDArray[np.float64], frame: Frame) -> Self:
         """Wrap a float array of shape (..., 3) without validation (internal)."""
         batch = object.__new__(cls)
         batch._coords = coords
@@ -123,7 +125,7 @@ class PrimitiveArray:
         return cls(array, frame, copy=copy)
 
     @classmethod
-    def from_primitives(cls, primitives: Sequence[Point] | Sequence[Vector]) -> Self:
+    def from_primitives(cls, primitives: Sequence[E]) -> Self:
         """Collect single primitives of one frame into a 1-D batch.
 
         Args:
@@ -205,7 +207,7 @@ class PrimitiveArray:
         """Extend an element index so it never addresses the coordinate axis."""
         return (*(key if isinstance(key, tuple) else (key,)), slice(None))
 
-    def __getitem__(self, key: Any) -> Self | GeometricPrimitive:
+    def __getitem__(self, key: Any) -> E | Self:
         """Index elements like numpy indexes the leading axes.
 
         Returns:
@@ -246,18 +248,24 @@ class PrimitiveArray:
             check_same_frame(self, value)
         self._coords[self._storage_key(key)] = _coordinates(value)
 
-    def __iter__(self) -> Iterator[Self | GeometricPrimitive]:
+    def __iter__(self) -> Iterator[E | Self]:
         """Iterate over the first axis (slow path, creates one object per item)."""
         return (self[index] for index in range(len(self)))
 
-    def to_list(self) -> list[GeometricPrimitive]:
+    def to_list(self) -> list[E]:
         """Return all elements as a flat list of independent Point/Vector objects.
 
         Examples:
             >>> points = cloud.to_list()  # list[Point]
         """
-        flat = self._wrap(self._coords.reshape(-1, 3), self.frame)
-        return list(flat)
+        w = 1.0 if self._is_point else 0.0
+        homogeneous = np.concatenate(
+            [self._coords.reshape(-1, 3), np.full((self._coords.size // 3, 1), w)],
+            axis=1,
+        )
+        return [
+            self._element_type._from_homogeneous(row, self.frame) for row in homogeneous
+        ]
 
     def copy(self) -> Self:
         """Create an independent copy in the same frame."""
@@ -310,7 +318,8 @@ class PrimitiveArray:
             )
         own = self.to_global()
         other_coords = _coordinates(other.to_frame(own.frame))
-        return np.isclose(own._coords, other_coords, rtol=0, atol=atol).all(axis=-1)
+        close = np.isclose(own._coords, other_coords, rtol=0, atol=atol)
+        return np.asarray(close.all(axis=-1))
 
     def __eq__(self, other: object) -> bool:
         raise TypeError(
@@ -345,7 +354,7 @@ class PrimitiveArray:
             check_same_frame(self, other)
         return _coordinates(other), _is_point_like(other)
 
-    def __add__(self, other: Geometric) -> Points | Vectors:
+    def _add(self, other: object) -> Points | Vectors:
         other_coords, other_is_point = self._operand(other)
         if self._is_point and other_is_point:
             raise TypeError(
@@ -358,9 +367,7 @@ class PrimitiveArray:
         result_type = Points if self._is_point or other_is_point else Vectors
         return result_type._wrap(self._coords + other_coords, self.frame)
 
-    __radd__ = __add__
-
-    def __sub__(self, other: Geometric) -> Points | Vectors:
+    def _sub(self, other: object) -> Points | Vectors:
         other_coords, other_is_point = self._operand(other)
         if other_is_point and not self._is_point:
             raise TypeError(
@@ -372,7 +379,7 @@ class PrimitiveArray:
         result_type = Vectors if self._is_point == other_is_point else Points
         return result_type._wrap(self._coords - other_coords, self.frame)
 
-    def __rsub__(self, other: Geometric) -> Points | Vectors:
+    def _rsub(self, other: object) -> Points | Vectors:
         other_coords, other_is_point = self._operand(other)
         if self._is_point and not other_is_point:
             raise TypeError(
@@ -448,11 +455,11 @@ class PrimitiveArray:
 
     def fix(self) -> Self:
         """Return batch with coordinates rounded toward zero."""
-        return self._apply(np.fix)
+        return self._apply(np.trunc)
 
     def fix_(self) -> Self:
         """Round coordinates toward zero in-place. Returns self for chaining."""
-        return self._apply_(np.fix)
+        return self._apply_(np.trunc)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Support only ufuncs with geometric meaning, see module docs."""
@@ -522,7 +529,7 @@ class PrimitiveArray:
         return implementation(*args, **kwargs)
 
 
-class Points(PrimitiveArray):
+class Points(PrimitiveArray[Point]):
     """Batch of points sharing one frame, stored as array of shape (..., 3).
 
     Arithmetic semantics (with Point/Points/Vector/Vectors, broadcasting):
@@ -540,6 +547,24 @@ class Points(PrimitiveArray):
     __slots__ = ()
     _element_type = Point
     _is_point = True
+
+    def __add__(self, other: Vector | Vectors) -> Points:
+        return cast("Points", self._add(other))
+
+    def __radd__(self, other: Vector) -> Points:
+        return cast("Points", self._add(other))
+
+    @overload
+    def __sub__(self, other: Point | Points) -> Vectors: ...
+
+    @overload
+    def __sub__(self, other: Vector | Vectors) -> Points: ...
+
+    def __sub__(self, other: object) -> Points | Vectors:
+        return self._sub(other)
+
+    def __rsub__(self, other: Point) -> Vectors:
+        return cast("Vectors", self._rsub(other))
 
     def __mul__(self, other: Any) -> None:
         """Multiplication is undefined for points.
@@ -574,7 +599,7 @@ class Points(PrimitiveArray):
         )
 
 
-class Vectors(PrimitiveArray):
+class Vectors(PrimitiveArray[Vector]):
     """Batch of vectors sharing one frame, stored as array of shape (..., 3).
 
     Arithmetic semantics (with Point/Points/Vector/Vectors, broadcasting):
@@ -592,6 +617,30 @@ class Vectors(PrimitiveArray):
     __slots__ = ()
     _element_type = Vector
     _is_point = False
+
+    @overload
+    def __add__(self, other: Vector | Vectors) -> Vectors: ...
+
+    @overload
+    def __add__(self, other: Point | Points) -> Points: ...
+
+    def __add__(self, other: object) -> Points | Vectors:
+        return self._add(other)
+
+    @overload
+    def __radd__(self, other: Vector) -> Vectors: ...
+
+    @overload
+    def __radd__(self, other: Point) -> Points: ...
+
+    def __radd__(self, other: object) -> Points | Vectors:
+        return self._add(other)
+
+    def __sub__(self, other: Vector | Vectors) -> Vectors:
+        return cast("Vectors", self._sub(other))
+
+    def __rsub__(self, other: Vector) -> Vectors:
+        return cast("Vectors", self._rsub(other))
 
     def _factors(self, other: Any, operation: str) -> NDArray[np.floating]:
         """Validate scale factors and shape them to broadcast per element."""
@@ -683,22 +732,13 @@ class Vectors(PrimitiveArray):
         self._coords /= magnitude[..., np.newaxis]
         return self
 
-    def _vector_operand(self, other: object, operation: str) -> NDArray[np.floating]:
-        if not isinstance(other, Vector | Vectors):
-            raise TypeError(
-                f"{operation} requires Vector or Vectors, got {type(other).__name__}."
-            )
-        if other.frame is not self.frame:
-            check_same_frame(self, other)
-        return _coordinates(other)
-
     def dot(self, other: Vector | Vectors) -> NDArray[np.floating]:
         """Element-wise dot product (broadcasting).
 
         Examples:
             >>> cos_angles = directions.dot(frame.z_axis)
         """
-        return np.vecdot(self._coords, self._vector_operand(other, "dot"))
+        return np.vecdot(self._coords, _vector_coordinates(self, other, "dot"))
 
     def cross(self, other: Vector | Vectors) -> Vectors:
         """Element-wise cross product (broadcasting).
@@ -706,8 +746,21 @@ class Vectors(PrimitiveArray):
         Examples:
             >>> normals = edges_a.cross(edges_b)
         """
-        other_coords = self._vector_operand(other, "cross")
+        other_coords = _vector_coordinates(self, other, "cross")
         return self._wrap(np.cross(self._coords, other_coords), self.frame)
+
+
+def _vector_coordinates(
+    reference: Vector | Vectors, other: object, operation: str
+) -> NDArray[np.float64]:
+    """Coordinates of a vector-like operand in the frame of reference."""
+    if not isinstance(other, Vector | Vectors):
+        raise TypeError(
+            f"{operation} requires Vector or Vectors, got {type(other).__name__}."
+        )
+    if other.frame is not reference.frame:
+        check_same_frame(reference, other)
+    return _coordinates(other)
 
 
 def _reject_out(name: str, out: Any) -> None:
@@ -779,7 +832,7 @@ def _cross(a: Vector | Vectors, b: Vector | Vectors, **kwargs: Any) -> Vectors:
             "np.cross on hazy objects requires two Vector/Vectors without "
             "axis arguments.\nUse: vectors.cross(other)"
         )
-    other_coords = Vectors._vector_operand(a, b, "cross")
+    other_coords = _vector_coordinates(a, b, "cross")
     return Vectors._wrap(np.cross(_coordinates(a), other_coords), a.frame)
 
 

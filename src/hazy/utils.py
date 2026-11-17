@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import Any
 
+    from hazy.primitive_arrays import PrimitiveArray
     from hazy.primitives import GeometricPrimitive
 
 
-def check_same_frame(*objects: GeometricPrimitive):
+def check_same_frame(*objects: GeometricPrimitive | PrimitiveArray[Any]) -> None:
     """Verify that two geometric primitives are in the same reference frame.
 
     Args:

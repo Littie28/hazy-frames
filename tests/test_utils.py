@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 def test_check_same_frame_no_primitive_raises_runtime_error(frame: Frame):
     with pytest.raises(RuntimeError, match="Expected GeometricPrimitive"):
-        check_same_frame(int, float)
+        check_same_frame(int, float)  # type: ignore
 
     with pytest.raises(RuntimeError, match="Expected GeometricPrimitive"):
-        check_same_frame(frame.vector(1, 1, 1), float)
+        check_same_frame(frame.vector(1, 1, 1), float)  # type: ignore
 
 
 def test_check_same_frame(frame: Frame):

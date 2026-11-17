@@ -7,7 +7,8 @@ with parent-child relationships, and transformations are cached for performance.
 
 from __future__ import annotations
 
-from functools import wraps
+import operator
+from functools import reduce, wraps
 from typing import TYPE_CHECKING, Any, Literal, Self, overload
 from weakref import WeakSet
 
@@ -19,13 +20,34 @@ from hazy.primitive_arrays import Points, Vectors
 from hazy.primitives import Point, Vector
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from numpy.typing import ArrayLike, NDArray
 
 
 _IDENTITY_MATRIX = np.eye(4, dtype=float)
 _IDENTITY_MATRIX.setflags(write=False)
+
+
+def _scalar_coordinates(
+    x: object, y: object, z: object, factory: str
+) -> tuple[float, float, float]:
+    """Validate three scalar coordinates for Frame.point()/Frame.vector()."""
+    hint = (
+        "Provide either (x, y, z) or single array-like.\n"
+        "Use:\n"
+        f"  frame.{factory}(1.0, 2.0, 3.0)  # Three scalars\n"
+        f"  frame.{factory}([1, 2, 3])  # Array-like"
+    )
+    if y is None or z is None:
+        raise ValueError(hint)
+
+    def as_float(name: str, value: object) -> float:
+        if not isinstance(value, int | float | np.integer | np.floating):
+            raise ValueError(
+                f"{name} must be a scalar if y and z are given, got {value!r}.\n{hint}"
+            )
+        return float(value)
+
+    return as_float("x", x), as_float("y", y), as_float("z", z)
 
 
 def invalidate_transform_cache(method):
@@ -190,7 +212,8 @@ class Frame:
     @property
     def combined_rotation(self) -> Rotation:
         """Combined rotation from all accumulated rotations."""
-        return np.multiply.reduce(self._rotations)
+        # functools.reduce instead of np.multiply.reduce: Rotation is no array
+        return reduce(operator.mul, self._rotations)
 
     @property
     def combined_scale(self) -> NDArray[np.floating]:
@@ -430,14 +453,14 @@ class Frame:
     def translate(self, x: float, y: float, z: float) -> Self: ...
 
     @overload
-    def translate(self, x: Sequence[float]) -> Self: ...
+    def translate(self, x: ArrayLike) -> Self: ...
 
     @overload
     def translate(self, *, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> Self: ...
 
     @invalidate_transform_cache
     def translate(
-        self, x: float | Sequence[float] = 0.0, y: float = 0.0, z: float = 0.0
+        self, x: float | ArrayLike = 0.0, y: float = 0.0, z: float = 0.0
     ) -> Self:
         """Add translation to frame.
 
@@ -486,14 +509,14 @@ class Frame:
     def scale(self, x: float) -> Self: ...
 
     @overload
-    def scale(self, x: Sequence[float]) -> Self: ...
+    def scale(self, x: ArrayLike) -> Self: ...
 
     @overload
     def scale(self, x: float, y: float, z: float) -> Self: ...
 
     @invalidate_transform_cache
     def scale(
-        self, x: float | Sequence[float], y: float | None = None, z: float | None = None
+        self, x: float | ArrayLike, y: float | None = None, z: float | None = None
     ) -> Self:
         """Add scaling to frame.
 
@@ -625,15 +648,7 @@ class Frame:
         """
         if y is None and z is None:
             return Vector.from_array(x, frame=self)
-        elif y is not None and z is not None:
-            return Vector(x=x, y=y, z=z, frame=self)
-        else:
-            raise ValueError(
-                "Provide either (x, y, z) or single array-like.\n"
-                "Use:\n"
-                "  frame.vector(1.0, 2.0, 3.0)  # Three scalars\n"
-                "  frame.vector([1, 2, 3])  # Array-like"
-            )
+        return Vector(*_scalar_coordinates(x, y, z, "vector"), frame=self)
 
     @overload
     def point(self, x: float, y: float, z: float) -> Point: ...
@@ -661,23 +676,7 @@ class Frame:
         """
         if y is None and z is None:
             return Point.from_array(x, frame=self)
-        elif y is not None and z is not None:
-            if not np.isscalar(x):
-                raise ValueError(
-                    "x must be a scalar if y and z are given, got {x}.\n"
-                    "Provide either (x, y, z) or single array-like.\n"
-                    "Use:\n"
-                    "  frame.point(1.0, 2.0, 3.0)  # Three scalars\n"
-                    "  frame.point([1, 2, 3])  # Array-like"
-                )
-            return Point(x=x, y=y, z=z, frame=self)
-        else:
-            raise ValueError(
-                "Provide either (x, y, z) or single array-like.\n"
-                "Use:\n"
-                "  frame.point(1.0, 2.0, 3.0)  # Three scalars\n"
-                "  frame.point([1, 2, 3])  # Array-like"
-            )
+        return Point(*_scalar_coordinates(x, y, z, "point"), frame=self)
 
     def points(self, coords: ArrayLike, *, copy: bool = True) -> Points:
         """Create a batch of points in this frame.

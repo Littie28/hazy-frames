@@ -134,7 +134,7 @@ class TestPrimitiveInternals:
 
     def test_primitives_reject_arbitrary_attributes(self, frame: Frame):
         with pytest.raises(AttributeError):
-            frame.point(1, 2, 3).color = "red"
+            frame.point(1, 2, 3).color = "red"  # type: ignore
 
     def test_arithmetic_result_types_from_homogeneous_coordinates(self, frame: Frame):
         p, q, v = frame.point(1, 2, 3), frame.point(0, 1, 1), frame.vector(1, 1, 1)

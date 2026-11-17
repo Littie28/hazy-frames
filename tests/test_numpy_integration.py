@@ -64,7 +64,7 @@ class TestNumpyScalarOperations:
         scalar = np.float64(2.0)
 
         with pytest.raises(TypeError, match="Scalar multiplication"):
-            p * scalar
+            _ = p * scalar
 
     def test_numpy_scalar_multiply_point_raises(self):
         """np.float64 * Point should raise TypeError"""
@@ -73,7 +73,7 @@ class TestNumpyScalarOperations:
         scalar = np.float64(2.0)
 
         with pytest.raises(TypeError):
-            scalar * p
+            _ = scalar * p  # type: ignore
 
 
 @pytest.mark.numpy
@@ -186,7 +186,7 @@ class TestNumpyArrayConstruction:
         frame = Frame(parent=None, name="global")
 
         with pytest.raises(ValueError):
-            frame.vector(1, 2)
+            frame.vector(1, 2)  # type: ignore
 
         with pytest.raises(ValueError):
             frame.vector(1)
@@ -370,7 +370,7 @@ class TestNumpyLinalgFunctions:
         v = Vector(1, 2, 3, frame=frame)
 
         with pytest.raises(TypeError, match="keepdims parameter not supported"):
-            np.linalg.norm(v, keepdims=True)
+            np.linalg.norm(v, keepdims=True)  # type: ignore
 
     def test_dot_vectors(self):
         """np.dot should work with two Vectors"""

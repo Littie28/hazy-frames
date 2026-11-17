@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 from hypothesis import given
@@ -342,10 +344,10 @@ class TestScaling:
 
     def test_scale_invalid_sequence_scalar_raises_value_error(self, frame: Frame):
         with pytest.raises(ValueError):
-            frame.scale((1.0, 2.0, 3.0), 1.0)
+            frame.scale((1.0, 2.0, 3.0), 1.0)  # type: ignore
 
         with pytest.raises(ValueError):
-            frame.scale((1.0, 2.0, 3.0), z=5.0)
+            frame.scale((1.0, 2.0, 3.0), z=5.0)  # type: ignore
 
     def test_scale_three_scalars(self, frame: Frame):
         frame.scale(1, 2, 3)
@@ -354,7 +356,7 @@ class TestScaling:
 
     def test_scale_two_scalars_raises_value_error(self, frame: Frame):
         with pytest.raises(ValueError, match="Provide either"):
-            frame.scale(1.0, 2.0)
+            frame.scale(1.0, 2.0)  # type: ignore
 
     def test_clear_scaling_only_scaling(self, frame: Frame):
         frame.scale(5)
@@ -397,16 +399,18 @@ class TestRotations:
             frame.rotate(np.ones((4, 4)))
 
     def test_rotate_euler_invalid_args_raises_value_error(self, frame: Frame):
-        with pytest.raises(ValueError, match="setting an array element"):
-            frame.rotate_euler(x=(1, 2, 3))
+        rotate_euler_untyped: Any = frame.rotate_euler
 
         with pytest.raises(ValueError, match="setting an array element"):
-            frame.rotate_euler(x=5, y=(1, 2, 3), degrees=True)
+            rotate_euler_untyped(x=(1, 2, 3))
+
+        with pytest.raises(ValueError, match="setting an array element"):
+            rotate_euler_untyped(x=5, y=(1, 2, 3), degrees=True)
 
         with pytest.raises(
             TypeError, match="Frame\\.rotate_euler\\(\\) takes 1 positional"
         ):
-            frame.rotate_euler(5, degrees=True)
+            rotate_euler_untyped(5, degrees=True)
 
     def test_rotate_quaternion_invalid_args_raises_value_error(self, frame: Frame):
         with pytest.raises(
@@ -452,12 +456,12 @@ class TestTranslation:
         with pytest.raises(
             ValueError, match="y and z parameter are not supported if x is a Sequence"
         ):
-            frame.translate((3, 5, 1), 1.0)
+            frame.translate((3, 5, 1), 1.0)  # type: ignore
 
         with pytest.raises(
             ValueError, match="y and z parameter are not supported if x is a Sequence"
         ):
-            frame.translate((3, 5, 1), 1.0, 5.0)
+            frame.translate((3, 5, 1), 1.0, 5.0)  # type: ignore
 
         with pytest.raises(ValueError, match="Can not translate by x"):
             frame.translate((5, 5, 5, 5))
@@ -569,10 +573,10 @@ class TestFactoryMethods:
 
     def test_create_point_raises_value_error(self, frame: Frame):
         with pytest.raises(ValueError, match="x must be a scalar"):
-            frame.point((1, 2, 3), 4, 5)
+            frame.point((1, 2, 3), 4, 5)  # type: ignore
 
         with pytest.raises(ValueError, match="Provide either"):
-            frame.point((1, 2, 3), 5)
+            frame.point((1, 2, 3), 5)  # type: ignore
 
 
 @pytest.mark.unit
@@ -1113,7 +1117,9 @@ class TestDeepCopy:
         copied_child = deepcopy(child)
 
         assert copied_child is not child
+        assert copied_child.parent is not None
         assert copied_child.parent is not parent
+        assert copied_child.parent.parent is not None
         assert copied_child.parent.parent.name == "root"
 
         expected_global = np.eye(4)

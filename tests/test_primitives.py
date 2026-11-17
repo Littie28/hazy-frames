@@ -157,7 +157,7 @@ class TestPointArithmetic:
         p2 = Point(4, 5, 6, frame=frame)
 
         with pytest.raises(TypeError, match="Cannot add two Points"):
-            p1 + p2
+            _ = p1 + p2  # type: ignore
 
 
 @pytest.mark.unit
@@ -217,7 +217,7 @@ class TestVectorArithmetic:
         p = Point(4, 5, 6, frame=frame)
 
         with pytest.raises(TypeError, match="Cannot subtract Point from Vector"):
-            v - p
+            _ = v - p  # type: ignore
 
 
 @pytest.mark.unit
@@ -236,10 +236,10 @@ class TestErrorHandling:
         point = Point(1, 2, 3, frame=frame)
 
         with pytest.raises(ValueError, match="Cannot compare"):
-            point == "not a point"
+            _ = point == "not a point"
 
         with pytest.raises(ValueError, match="Cannot compare"):
-            point == 42
+            _ = point == 42
 
 
 @pytest.mark.unit
@@ -350,7 +350,7 @@ class TestFrameChecking:
         v = Vector(1, 0, 0, frame=frame2)
 
         with pytest.raises(RuntimeError, match="coordinate system"):
-            p + v
+            _ = p + v
 
     def test_vector_cross_different_frames_raises(self):
         """Cross product on vectors from different frames should raise"""
@@ -449,7 +449,7 @@ class TestNumpyInteroperability:
         v = Vector(1, 2, 3, frame=frame)
         arr = np.array([1, 0, 0])
         with pytest.raises(TypeError):
-            v + arr
+            _ = v + arr
 
     def test_point_add_numpy_array(self):
         """Point + numpy array should work"""
@@ -458,7 +458,7 @@ class TestNumpyInteroperability:
         arr = np.array([1, 0, 0])
 
         with pytest.raises(TypeError):
-            p + arr
+            _ = p + arr
 
     def test_point_subtract_numpy_array(self):
         """Point - numpy array should work"""
@@ -467,4 +467,4 @@ class TestNumpyInteroperability:
         arr = np.array([1, 0, 0])
 
         with pytest.raises(TypeError):
-            p - arr
+            _ = p - arr

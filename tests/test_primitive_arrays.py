@@ -59,7 +59,7 @@ class TestConstruction:
 
     def test_from_primitives_rejects_mixed_kinds(self, camera: Frame):
         with pytest.raises(TypeError, match="expects only Point"):
-            Points.from_primitives([camera.point(1, 2, 3), camera.vector(1, 2, 3)])
+            Points.from_primitives([camera.point(1, 2, 3), camera.vector(1, 2, 3)])  # type: ignore
 
     def test_from_primitives_rejects_mixed_frames(self, camera: Frame):
         other = camera.make_child("other")
@@ -90,6 +90,7 @@ class TestIndexing:
 
     def test_mask_selection_is_copy_like_numpy(self, cloud: Points):
         selected = cloud[cloud.z > 4]
+        assert isinstance(selected, Points)
         selected.clip_(a_max=0)
         assert selected.shape == (3,)
         assert_allclose(cloud[3], [9, 10, 11])
@@ -101,9 +102,12 @@ class TestIndexing:
     def test_multidimensional_batches_index_leading_axes(self, camera: Frame):
         grid = camera.points(np.zeros((4, 5, 3)))
         assert grid.shape == (4, 5)
-        assert grid[0].shape == (5,)
+        row, column = grid[0], grid[..., 0]
+        assert isinstance(row, Points)
+        assert isinstance(column, Points)
+        assert row.shape == (5,)
+        assert column.shape == (4,)
         assert isinstance(grid[0, 1], Point)
-        assert grid[..., 0].shape == (4,)
         assert len(grid.to_list()) == 20
 
     def test_iteration_yields_elements(self, cloud: Points):
@@ -118,7 +122,7 @@ class TestIndexing:
         self, cloud: Points, camera: Frame
     ):
         with pytest.raises(TypeError, match="np.asarray"):
-            cloud[0] = [1, 2, 3]
+            cloud[0] = [1, 2, 3]  # type: ignore
         with pytest.raises(TypeError, match="Can only assign Point or Points"):
             cloud[0] = camera.vector(1, 2, 3)
 
@@ -169,7 +173,7 @@ class TestTransformations:
 
     def test_equality_operator_points_to_isclose(self, cloud: Points):
         with pytest.raises(TypeError, match=r"isclose"):
-            cloud == cloud.copy()
+            _ = cloud == cloud.copy()
 
 
 @pytest.mark.unit
@@ -242,7 +246,7 @@ class TestArithmetic:
 
     def test_mixed_frames_raise(self, cloud: Points, root_frame: Frame):
         with pytest.raises(RuntimeError, match="same coordinate system"):
-            cloud - root_frame.points(np.zeros((4, 3)))
+            _ = cloud - root_frame.points(np.zeros((4, 3)))
 
     def test_broadcasting_gives_pairwise_differences(self, camera: Frame):
         a = camera.points(np.zeros((4, 1, 3)))
@@ -280,7 +284,7 @@ class TestVectorsOperations:
 
     def test_dot_rejects_points(self, camera: Frame):
         with pytest.raises(TypeError, match="requires Vector or Vectors"):
-            camera.vectors(np.eye(3)).dot(camera.points(np.eye(3)))
+            camera.vectors(np.eye(3)).dot(camera.points(np.eye(3)))  # type: ignore
 
 
 @pytest.mark.numpy
@@ -302,7 +306,7 @@ class TestNumpyIntegration:
             np.ceil(shifted),
             np.trunc(shifted),
             np.rint(shifted),
-            np.fix(shifted),
+            np.fix(shifted),  # type: ignore
             np.clip(shifted, 0, 5),
         ):
             assert type(result) is Points
@@ -354,6 +358,6 @@ class TestNumpyIntegration:
 
     def test_copy_is_independent(self, cloud: Points):
         duplicate = np.copy(cloud)
+        assert isinstance(duplicate, Points)
         duplicate.round_(decimals=-2)
-        assert type(duplicate) is Points
         assert cloud[3].x == 9

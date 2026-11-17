@@ -7,7 +7,7 @@ support arithmetic operations with proper type semantics.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Self, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast, overload
 
 import numpy as np
 
@@ -258,10 +258,12 @@ class GeometricPrimitive:
                 and np.isscalar(other)
                 and isinstance(geom_primitive, Vector)
             ):
+                # __mul__/__truediv__ validate the scalar and reject complex
+                scalar = cast("float", other)
                 if ufunc == np.multiply:
-                    return geom_primitive.__mul__(other)
+                    return geom_primitive.__mul__(scalar)
                 elif ufunc in (np.divide, np.true_divide) and geom_idx == 0:
-                    return geom_primitive.__truediv__(other)
+                    return geom_primitive.__truediv__(scalar)
 
         # delegate arithmetic to __dunder__ methods
         if ufunc in (
@@ -418,7 +420,7 @@ class GeometricPrimitive:
             New primitive with fixed coordinates
         """
         copy = self.copy()
-        copy._homogeneous[:3] = np.fix(copy._homogeneous[:3])
+        copy._homogeneous[:3] = np.trunc(copy._homogeneous[:3])
         return copy
 
     def fix_(self) -> Self:
@@ -427,7 +429,7 @@ class GeometricPrimitive:
         Returns:
             Self for method chaining
         """
-        self._homogeneous[:3] = np.fix(self._homogeneous[:3])
+        self._homogeneous[:3] = np.trunc(self._homogeneous[:3])
         return self
 
     def ceil(self) -> Self:
