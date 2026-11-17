@@ -584,7 +584,7 @@ class TestBatchTransform:
         frame.translate(x=1, y=2, z=3)
         points = np.vstack(vector_3d_list)
         expected = points.copy() + [1, 2, 3]
-        transformed = frame.batch_transform_points_global(points)
+        transformed = np.asarray(frame.points(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
     @given(vector_3d_lists(min_size=1, max_size=10))
@@ -595,7 +595,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [0, 2, 1]] * [1, -1, 1]
-        transformed = frame.batch_transform_points_global(points)
+        transformed = np.asarray(frame.points(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around y
@@ -604,7 +604,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [2, 1, 0]] * [1, 1, -1]
-        transformed = frame.batch_transform_points_global(points)
+        transformed = np.asarray(frame.points(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around z
@@ -613,7 +613,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [1, 0, 2]] * [-1, 1, 1]
-        transformed = frame.batch_transform_points_global(points)
+        transformed = np.asarray(frame.points(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
     @given(vector_3d_lists(min_size=1, max_size=10))
@@ -624,7 +624,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [0, 2, 1]] * [1, -1, 1]
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around y
@@ -633,7 +633,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [2, 1, 0]] * [1, 1, -1]
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around z
@@ -642,7 +642,7 @@ class TestBatchTransform:
         points = np.vstack(vector_3d_list)
         expected = points.copy()
         expected = expected[:, [1, 0, 2]] * [-1, 1, 1]
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
     @given(vector_3d_lists(min_size=1, max_size=10))
@@ -653,7 +653,7 @@ class TestBatchTransform:
         frame = root.make_child("child").translate(x=1)
         points = np.vstack(vector_3d_list)
         expected = points.copy()
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around y
@@ -661,7 +661,7 @@ class TestBatchTransform:
         frame = root.make_child("child").translate(y=1)
         points = np.vstack(vector_3d_list)
         expected = points.copy()
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
         # rotate around z
@@ -669,7 +669,7 @@ class TestBatchTransform:
         frame = root.make_child("child").translate(z=1)
         points = np.vstack(vector_3d_list)
         expected = points.copy()
-        transformed = frame.batch_transform_vectors_global(points)
+        transformed = np.asarray(frame.vectors(points).to_global())
         assert_allclose(transformed, expected, atol=VVSMALL)
 
 

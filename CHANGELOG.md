@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Point` and `Vector` use `__slots__`; setting arbitrary attributes on them
   now raises `AttributeError`
 
+### Removed
+
+- **BREAKING**: `Frame.batch_transform_points_global()` and
+  `Frame.batch_transform_vectors_global()`, superseded by the batched types:
+  `np.asarray(frame.points(array).to_global())`
+
 ## [0.2.1] - 2026-11-11
 
 ### Added

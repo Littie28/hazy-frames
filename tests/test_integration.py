@@ -185,7 +185,7 @@ class TestBatchOperations:
 
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
-        transformed = frame.batch_transform_points_global(points)
+        transformed = np.asarray(frame.points(points).to_global())
 
         expected = np.array([[1, 2, 3], [1, 3, 3], [0, 2, 3], [1, 2, 4]])
 

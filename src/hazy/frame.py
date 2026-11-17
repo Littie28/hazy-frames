@@ -688,52 +688,6 @@ class Frame:
         """
         return Vectors(coords, frame=self, copy=copy)
 
-    def batch_transform_points_global(
-        self, points: NDArray[np.floating]
-    ) -> NDArray[np.floating]:
-        """Batch transform an array of points from this coordinate system to global.
-
-        Homogeneous coordinate (w=1) will be added automatically.
-
-        Args:
-            points: Array of 3D points, will be reshaped to (N, 3)
-
-        Returns:
-            Points transformed to global space
-
-        Examples:
-            >>> frame = Frame().translate(x=1.0)
-            >>> points = np.array([[0, 0, 0], [1, 0, 0]])
-            >>> frame.batch_transform_points_global(points)
-        """
-        points = np.asarray(points, dtype=float)
-        matrix = self._global_matrix()
-        transformed = points.reshape(-1, 3) @ matrix[:3, :3].T + matrix[:3, 3]
-        return transformed.reshape(points.shape)
-
-    def batch_transform_vectors_global(
-        self, vectors: NDArray[np.floating]
-    ) -> NDArray[np.floating]:
-        """Batch transform an array of vectors from this coordinate system to global.
-
-        Homogeneous coordinate (w=0) will be added automatically.
-
-        Args:
-            vectors: Array of 3D vectors, will be reshaped to (N, 3)
-
-        Returns:
-            Vectors transformed to global space
-
-        Examples:
-            >>> frame = Frame().translate(x=1.0)
-            >>> vectors = np.array([[1, 0, 0], [0, 1, 0]])
-            >>> frame.batch_transform_vectors_global(vectors)
-        """
-        vectors = np.asarray(vectors, dtype=float)
-        matrix = self._global_matrix()
-        transformed = vectors.reshape(-1, 3) @ matrix[:3, :3].T
-        return transformed.reshape(vectors.shape)
-
     @classmethod
     def make_root(cls, name: str | None = None) -> Frame:
         """Create a root frame (frame without parent).
