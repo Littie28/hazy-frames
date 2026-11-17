@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `benchmarks/bench_transforms.py` micro benchmarks for the hot paths
+
+### Changed
+
+- **Performance**: single-primitive operations are 5-15x faster
+  - Cached `Frame.transform_to()` 4.0 us -> 0.25 us, `Point.to_frame()`
+    6.1 us -> 0.9 us, `Point - Point` 2.8 us -> 0.55 us
+  - Global inverse transforms are cached, roots are cached at creation
+  - Public matrix properties still return copies, internal code uses
+    read-only cached matrices
+- `Point` and `Vector` use `__slots__`; setting arbitrary attributes on them
+  now raises `AttributeError`
+
 ## [0.2.1] - 2026-11-11
 
 ### Added

@@ -22,6 +22,10 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
 
 
+_IDENTITY_MATRIX = np.eye(4, dtype=float)
+_IDENTITY_MATRIX.setflags(write=False)
+
+
 def invalidate_transform_cache(method):
     """Decorator to invalidate cached transforms when frame is modified.
 
@@ -46,9 +50,7 @@ def invalidate_transform_cache(method):
                 "Use frame.unfreeze() to allow modifications, "
                 "or create a child frame with frame.make_child()."
             )
-        self._cached_transform = None
-        self._cached_transform_global = None
-        self._invalidate_children_cache()
+        self._clear_transform_caches()
         return method(self, *args, **kwargs)
 
     return wrapper
@@ -84,6 +86,7 @@ class Frame:
             >>> child = Frame(parent=root, name="camera")
         """
         self._parent: Frame | None = parent
+        self._root: Frame = self if parent is None else parent.root
         self._name = name or f"Frame-{id(self)}"
         self._children: set[Frame] = set()
 
@@ -93,6 +96,7 @@ class Frame:
 
         self._cached_transform: NDArray[np.floating] | None = None
         self._cached_transform_global: NDArray[np.floating] | None = None
+        self._cached_transform_global_inverse: NDArray[np.floating] | None = None
 
         self._is_frozen = False
 
@@ -107,13 +111,21 @@ class Frame:
         """
         self._children.add(child)
 
-    def _invalidate_children_cache(self) -> None:
-        """Recursively invalidate global transform cache of all children."""
+    def _clear_transform_caches(self) -> None:
+        """Invalidate local and global caches of this frame and its descendants."""
+        self._cached_transform = None
+        self._clear_global_transform_caches()
+
+    def _clear_global_transform_caches(self) -> None:
+        """Recursively invalidate global caches of this frame and its descendants.
+
+        Every cache that depends on ancestor transforms must be cleared here,
+        otherwise descendants keep stale matrices after an ancestor changes.
+        """
+        self._cached_transform_global = None
+        self._cached_transform_global_inverse = None
         for child in self._children:
-            # Defensive check in case child was deleted but still in set
-            if isinstance(child, Frame):
-                child._cached_transform_global = None
-                child._invalidate_children_cache()
+            child._clear_global_transform_caches()
 
     @property
     def parent(self) -> Frame | None:
@@ -147,12 +159,10 @@ class Frame:
         """Get the root frame of this hierarchy.
 
         Returns:
-            Root frame (self if no parent, otherwise traverses up to root)
+            Root frame (self if no parent). Cached at creation, since the
+            parent of a frame is immutable.
         """
-        current = self
-        while current.parent is not None:
-            current = current.parent
-        return current
+        return self._root
 
     @property
     def combined_rotation(self) -> Rotation:
@@ -179,18 +189,17 @@ class Frame:
         Returns:
             4x4 transformation matrix (copy to prevent modification)
         """
-        if self._cached_transform is not None:
-            return self._cached_transform.copy()
+        return self._local_matrix().copy()
 
-        transform = np.eye(4)
-
-        transform = self.combined_scale @ transform
-        transform[:3, :3] = self.combined_rotation.as_matrix() @ transform[:3, :3]
-        transform[:3, 3] += self.combined_translation
-
-        self._cached_transform = transform.copy()
-
-        return transform.copy()
+    def _local_matrix(self) -> NDArray[np.floating]:
+        """Cached local-to-parent matrix, shared and read-only (internal use)."""
+        if self._cached_transform is None:
+            transform = self.combined_scale
+            transform[:3, :3] = self.combined_rotation.as_matrix() @ transform[:3, :3]
+            transform[:3, 3] = self.combined_translation
+            transform.setflags(write=False)
+            self._cached_transform = transform
+        return self._cached_transform
 
     @property
     def transform_from_parent(self) -> NDArray[np.floating]:
@@ -211,16 +220,26 @@ class Frame:
         Returns:
             4x4 transformation matrix
         """
-        if self._cached_transform_global is not None:
-            return self._cached_transform_global.copy()
+        return self._global_matrix().copy()
 
-        if self.parent is None:
-            self._cached_transform_global = np.eye(4, dtype=float)
-        else:
-            self._cached_transform_global = (
-                self.parent.transform_to_global @ self.transform_to_parent
-            )
-        return self._cached_transform_global.copy()
+    def _global_matrix(self) -> NDArray[np.floating]:
+        """Cached local-to-global matrix, shared and read-only (internal use)."""
+        if self._cached_transform_global is None:
+            if self.parent is None:
+                transform = np.eye(4, dtype=float)
+            else:
+                transform = self.parent._global_matrix() @ self._local_matrix()
+            transform.setflags(write=False)
+            self._cached_transform_global = transform
+        return self._cached_transform_global
+
+    def _global_matrix_inverse(self) -> NDArray[np.floating]:
+        """Cached global-to-local matrix, shared and read-only (internal use)."""
+        if self._cached_transform_global_inverse is None:
+            inverse = np.linalg.inv(self._global_matrix())
+            inverse.setflags(write=False)
+            self._cached_transform_global_inverse = inverse
+        return self._cached_transform_global_inverse
 
     @property
     def transform_from_global(self) -> NDArray[np.floating]:
@@ -229,7 +248,7 @@ class Frame:
         Returns:
             Inverse of transform_to_global
         """
-        return np.linalg.inv(self.transform_to_global)
+        return self._global_matrix_inverse().copy()
 
     @property
     def x_axis(self) -> Vector:
@@ -536,17 +555,26 @@ class Frame:
             >>> camera = world.make_child("camera").translate(z=5.0)
             >>> T = camera.transform_to(world)
         """
-        if self == target:
-            return np.eye(4)
+        return np.array(self._matrix_to(target))
 
-        if self.root is not target.root:
+    def _matrix_to(self, target: Frame) -> NDArray[np.floating]:
+        """Transformation matrix to target frame, possibly shared (internal use).
+
+        The result may be a read-only cached array and must not be mutated.
+        """
+        if self is target:
+            return _IDENTITY_MATRIX
+
+        if self._root is not target._root:
             raise RuntimeError(
                 f"Cannot transform between frames from different hierarchies.\n"
                 f"Frame '{self.name}' has root '{self.root.name}', "
                 f"but frame '{target.name}' has root '{target.root.name}'."
             )
 
-        return target.transform_from_global @ self.transform_to_global
+        if target is self._root:
+            return self._global_matrix()
+        return target._global_matrix_inverse() @ self._global_matrix()
 
     @overload
     def vector(self, x: float, y: float, z: float) -> Vector: ...
@@ -646,13 +674,10 @@ class Frame:
             >>> points = np.array([[0, 0, 0], [1, 0, 0]])
             >>> frame.batch_transform_points_global(points)
         """
-        points = np.asarray(points)
-        original_shape = points.shape
-        points_homogenous = np.hstack(
-            [points.reshape(-1, 3), np.ones((points.size // 3, 1))]
-        )
-        transformed = points_homogenous @ self.transform_to_global.T
-        return transformed[:, :3].reshape(original_shape)
+        points = np.asarray(points, dtype=float)
+        matrix = self._global_matrix()
+        transformed = points.reshape(-1, 3) @ matrix[:3, :3].T + matrix[:3, 3]
+        return transformed.reshape(points.shape)
 
     def batch_transform_vectors_global(
         self, vectors: NDArray[np.floating]
@@ -672,13 +697,10 @@ class Frame:
             >>> vectors = np.array([[1, 0, 0], [0, 1, 0]])
             >>> frame.batch_transform_vectors_global(vectors)
         """
-        vectors = np.asarray(vectors)
-        original_shape = vectors.shape
-        vectors_homogenous = np.hstack(
-            [vectors.reshape(-1, 3), np.zeros((vectors.size // 3, 1))]
-        )
-        transformed = vectors_homogenous @ self.transform_to_global.T
-        return transformed[:, :3].reshape(original_shape)
+        vectors = np.asarray(vectors, dtype=float)
+        matrix = self._global_matrix()
+        transformed = vectors.reshape(-1, 3) @ matrix[:3, :3].T
+        return transformed.reshape(vectors.shape)
 
     @classmethod
     def make_root(cls, name: str | None = None) -> Frame:

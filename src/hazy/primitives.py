@@ -41,6 +41,8 @@ class GeometricPrimitive:
     Points have w=1, Vectors have w=0.
     """
 
+    __slots__ = ("_homogeneous", "frame")
+
     def __init__(self, x: float, y: float, z: float, w: float, frame: Frame):
         """Initialize geometric primitive in homogeneous coordinates.
 
@@ -53,6 +55,14 @@ class GeometricPrimitive:
         """
         self._homogeneous = np.array([x, y, z, w], dtype=float)
         self.frame = frame
+
+    @classmethod
+    def _from_homogeneous(cls, homogeneous: NDArray[np.floating], frame: Frame) -> Self:
+        """Wrap an owned float array of shape (4,) without validation (internal)."""
+        primitive = object.__new__(cls)
+        primitive._homogeneous = homogeneous
+        primitive.frame = frame
+        return primitive
 
     def __array__(self, dtype=None, copy=None) -> np.ndarray:
         """Return Cartesian coordinates for numpy operations.
@@ -149,15 +159,11 @@ class GeometricPrimitive:
             >>> p_camera = p_world.to_frame(camera)
             >>> p_camera.x  # -1.0 (camera is 1 unit away in x)
         """
-        transformation = self.frame.transform_to(target=target_frame)
-        x, y, z, w = transformation @ self._homogeneous
-
-        if isinstance(self, Point):
-            # Points (w=1): normalize by w after transformation
-            return type(self)(x=x / w, y=y / w, z=z / w, w=1.0, frame=target_frame)
-        else:
-            # Vectors (w=0): do not normalize, w stays 0
-            return type(self)(x=x, y=y, z=z, w=0.0, frame=target_frame)
+        transformation = self.frame._matrix_to(target_frame)
+        homogeneous = transformation @ self._homogeneous
+        # Affine matrices keep w exact; reassign so non-finite coords cannot leak
+        homogeneous[3] = self._homogeneous[3]
+        return self._from_homogeneous(homogeneous, target_frame)
 
     def to_global(self) -> Self:
         """Return copy of primitive transformed to the root frame.
@@ -332,9 +338,7 @@ class GeometricPrimitive:
 
     def copy(self) -> Self:
         """Create a copy of this geometric primitive in the same frame."""
-        return type(self)(
-            self.x, self.y, self.z, frame=self.frame, w=self._homogeneous[3]
-        )
+        return self._from_homogeneous(self._homogeneous.copy(), self.frame)
 
     def round(self, decimals: int = 0) -> Self:
         """Round coordinates to given number of decimals.
@@ -520,6 +524,8 @@ class Vector(GeometricPrimitive):
         - Vector - Point = ERROR (undefined operation)
     """
 
+    __slots__ = ()
+
     def __init__(self, x: float, y: float, z: float, frame: Frame, *, w=0.0):
         """Initialize vector in given frame.
 
@@ -568,14 +574,12 @@ class Vector(GeometricPrimitive):
             >>> p = frame.point(1, 2, 3)
             >>> v1 + p  # Point(x=2, y=2, z=3)
         """
-        if isinstance(other, Point):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) + np.array(other)
-            return Point(x, y, z, frame=self.frame)
-        elif isinstance(other, Vector):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) + np.array(other)
-            return Vector(x, y, z, frame=self.frame)
+        if isinstance(other, Point | Vector):
+            if other.frame is not self.frame:
+                check_same_frame(self, other)
+            return type(other)._from_homogeneous(
+                self._homogeneous + other._homogeneous, self.frame
+            )
         else:
             return other.__add__(self)
 
@@ -615,9 +619,11 @@ class Vector(GeometricPrimitive):
                 "  Point.from_array(np.array(vector) - np.array(point), frame=frame)"
             )
         elif isinstance(other, Vector):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) - np.array(other)
-            return Vector(x, y, z, frame=self.frame)
+            if other.frame is not self.frame:
+                check_same_frame(self, other)
+            return Vector._from_homogeneous(
+                self._homogeneous - other._homogeneous, self.frame
+            )
         else:
             return other.__rsub__(self)
 
@@ -752,7 +758,7 @@ class Vector(GeometricPrimitive):
             >>> v = frame.vector(1, -2, 3)
             >>> -v  # Vector(x=-1, y=2, z=-3)
         """
-        return Vector(-self.x, -self.y, -self.z, frame=self.frame)
+        return Vector._from_homogeneous(-self._homogeneous, self.frame)
 
     def cross(self, other: Vector) -> Vector:
         """Compute cross product with another vector.
@@ -839,6 +845,8 @@ class Point(GeometricPrimitive):
         - Point + Point = ERROR (undefined operation)
     """
 
+    __slots__ = ()
+
     def __init__(self, x: float, y: float, z: float, frame: Frame, *, w=1.0):
         """Initialize point in given frame.
 
@@ -887,14 +895,13 @@ class Point(GeometricPrimitive):
             >>> v = frame.vector(1, 1, 1)
             >>> p1 - v  # Point(x=4, y=2, z=0)
         """
-        if isinstance(other, Point):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) - np.array(other)
-            return Vector(x, y, z, frame=self.frame)
-        elif isinstance(other, Vector):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) - np.array(other)
-            return Point(x, y, z, frame=self.frame)
+        if isinstance(other, Point | Vector):
+            if other.frame is not self.frame:
+                check_same_frame(self, other)
+            result_type = Vector if isinstance(other, Point) else Point
+            return result_type._from_homogeneous(
+                self._homogeneous - other._homogeneous, self.frame
+            )
         else:
             return other.__rsub__(self)
 
@@ -935,9 +942,11 @@ class Point(GeometricPrimitive):
                 "  Point.from_array(np.array(p1) + np.array(p2), frame=frame)"
             )
         elif isinstance(other, Vector):
-            check_same_frame(self, other)
-            x, y, z = np.array(self) + np.array(other)
-            return Point(x, y, z, frame=self.frame)
+            if other.frame is not self.frame:
+                check_same_frame(self, other)
+            return Point._from_homogeneous(
+                self._homogeneous + other._homogeneous, self.frame
+            )
         else:
             return other.__add__(self)
 
