@@ -668,7 +668,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'examples'", specifier = ">=1.1.1" },
     { name = "matplotlib", marker = "extra == 'docs'", specifier = ">=3.10.7" },
     { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.10.7" },
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0.0" },
+    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.0.0" },
     { name = "nbsphinx", marker = "extra == 'docs'", specifier = ">=0.9.5" },
     { name = "numpy", specifier = ">=2.3.4" },
     { name = "scipy", specifier = ">=1.16.3" },
